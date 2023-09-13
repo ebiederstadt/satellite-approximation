@@ -1,0 +1,2 @@
+add_library(cloud_shadow_detection STATIC test.cpp)
+target_include_directories(cloud_shadow_detection PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
