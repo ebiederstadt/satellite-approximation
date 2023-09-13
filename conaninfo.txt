@@ -9,16 +9,15 @@
 [requires]
     boost/1.Y.Z
     eigen/3.Y.Z
-    fmt/10.Y.Z
     glfw/3.Y.Z
     glm/cci.20230113
-    imgui/1.Y.Z
     libtiff/4.Y.Z
     lyra/1.Y.Z
     nlohmann_json/3.Y.Z
     opencl-headers/2023.Y.Z
     opencl-icd-loader/2023.Y.Z
     pybind11/2.Y.Z
+    spdlog/1.Y.Z
     tomlplusplus/3.Y.Z
 
 [options]
@@ -36,10 +35,9 @@
     boost/1.82.0:d79e86182689ad8ac0cbb390d02675367bfe4e69
     bzip2/1.0.8:9e8e1467865a298d5ee883bbdc2935251d8646e4
     eigen/3.4.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    fmt/10.0.0:aae96d22d98da75d46dede7f940c818d1b39dfc1
+    fmt/10.1.0:aae96d22d98da75d46dede7f940c818d1b39dfc1
     glfw/3.3.8:68a705c489ec1f623478bbe9ee21c0f74f9997ef
     glm/cci.20230113:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    imgui/1.81:31c7385a8f4724f7b9154f867649560ee555de0c
     jbig/20160605:f7f1164a1e4e557512ad029311374c0b96b354c4
     libbacktrace/cci.20210118:418c98e6da4c0c69bbc85c38a555e4eba175c719
     libdeflate/1.18:418c98e6da4c0c69bbc85c38a555e4eba175c719
@@ -53,6 +51,7 @@
     opencl-icd-loader/2023.04.17:9979425a4f1d315d1e484e71546a23ff1ce6fb36
     opengl/system:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     pybind11/2.10.1:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    spdlog/1.12.0:7b9a822076b243ab91b7cd1380d1323ae2ad5567
     tomlplusplus/3.3.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     xorg/system:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     xz_utils/5.4.2:418c98e6da4c0c69bbc85c38a555e4eba175c719
@@ -138,8 +137,6 @@
     glfw:fPIC=True
     glfw:shared=False
     glfw:vulkan_static=False
-    imgui:fPIC=True
-    imgui:shared=False
     jbig:build_executables=True
     jbig:fPIC=True
     jbig:shared=False
@@ -166,6 +163,12 @@
     libwebp:with_simd=True
     opencl-icd-loader:fPIC=True
     opencl-icd-loader:shared=False
+    spdlog:fPIC=True
+    spdlog:header_only=False
+    spdlog:no_exceptions=False
+    spdlog:shared=False
+    spdlog:wchar_filenames=False
+    spdlog:wchar_support=False
     xz_utils:fPIC=True
     xz_utils:shared=False
     zlib:fPIC=True

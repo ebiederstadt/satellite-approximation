@@ -8,6 +8,21 @@ project(
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
+# Packages needed for library
+find_package(lyra REQUIRED)
+find_package(tomlplusplus REQUIRED)
+find_package(Eigen3 REQUIRED CONFIG)
+find_package(spdlog REQUIRED)
+find_package(imgui REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(glm REQUIRED)
+find_package(glfw3 REQUIRED)
+find_package(TIFF REQUIRED)
+find_package(Boost REQUIRED)
+find_package(OpenCLHeaders REQUIRED)
+find_package(OpenCLICDLoader REQUIRED)
+find_package(OpenGL REQUIRED)
+
 add_subdirectory(lib)
 add_subdirectory(executables)
 
