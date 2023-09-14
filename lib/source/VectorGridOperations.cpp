@@ -1,10 +1,10 @@
 #define _USE_MATH_DEFINES
-#include "VectorGridOperations.h"
+#include "cloud_shadow_detection/VectorGridOperations.h"
 
 #include <math.h>
 
-#include "Functions.h"
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 
 namespace VectorGridOperations {
 std::shared_ptr<VectorGrid>

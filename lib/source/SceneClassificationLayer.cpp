@@ -1,4 +1,4 @@
-#include "SceneClassificationLayer.h"
+#include "cloud_shadow_detection/SceneClassificationLayer.h"
 
 std::shared_ptr<ImageBool>
 SceneClassificationLayer::GenerateMask(std::shared_ptr<ImageUint> A, unsigned int channelCodes) {

@@ -1,11 +1,11 @@
-#include "ProbabilityRefinement.h"
+#include "cloud_shadow_detection/ProbabilityRefinement.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <list>
 #include <map>
 
-#include "Functions.h"
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 
 namespace ImOp = ImageOperations;
 using namespace Functions;

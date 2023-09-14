@@ -1,7 +1,7 @@
-#include "CloudShadowMatching.h"
+#include "cloud_shadow_detection/CloudShadowMatching.h"
 
-#include "Functions.h"
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 
 using namespace ImageOperations;
 namespace CloudShadowMatching {

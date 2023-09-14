@@ -1,4 +1,4 @@
-#include "ComputeEnvironment.h"
+#include "cloud_shadow_detection/ComputeEnvironment.h"
 
 using namespace boost::compute;
 

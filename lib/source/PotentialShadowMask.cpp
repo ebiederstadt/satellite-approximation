@@ -1,10 +1,10 @@
-#include "PotentialShadowMask.h"
+#include "cloud_shadow_detection/PotentialShadowMask.h"
 
-#include "Functions.h"
-#include "GaussianBlur.h"
-#include "ImageOperations.h"
-#include "PitFillAlgorithm.h"
-#include "SceneClassificationLayer.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/GaussianBlur.h"
+#include "cloud_shadow_detection/ImageOperations.h"
+#include "cloud_shadow_detection/PitFillAlgorithm.h"
+#include "cloud_shadow_detection/SceneClassificationLayer.h"
 
 using namespace ImageOperations;
 using namespace GaussianBlur;

@@ -1,7 +1,7 @@
-#include "GaussianBlur.h"
+#include "cloud_shadow_detection/GaussianBlur.h"
 
-#include "ComputeEnvironment.h"
-#include "Functions.h"
+#include "cloud_shadow_detection/ComputeEnvironment.h"
+#include "cloud_shadow_detection/Functions.h"
 
 #define _USE_MATH_DEFINES
 #include <boost/compute/container/vector.hpp>

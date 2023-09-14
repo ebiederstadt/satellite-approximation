@@ -1,11 +1,11 @@
-#include "PitFillAlgorithm.h"
+#include "cloud_shadow_detection/PitFillAlgorithm.h"
 
 #include <boost/compute/container/vector.hpp>
 #include <boost/compute/core.hpp>
 #include <boost/compute/utility/source.hpp>
 
-#include "ComputeEnvironment.h"
-#include "Functions.h"
+#include "cloud_shadow_detection/ComputeEnvironment.h"
+#include "cloud_shadow_detection/Functions.h"
 #include <spdlog/spdlog.h>
 
 #define _USE_MATH_DEFINES

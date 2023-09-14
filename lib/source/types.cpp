@@ -1,4 +1,4 @@
-#include "types.h"
+#include "cloud_shadow_detection/types.h"
 
 glm::u32 ImageBounds::size() { return (p1.x - p0.x + 1) * (p1.y - p0.y + 1); }
 

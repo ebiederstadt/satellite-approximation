@@ -10,24 +10,21 @@
 #include <toml++/toml.h>
 #include <spdlog/spdlog.h>
 
-#include "glm/glm.hpp"
-#include "glm/gtc/type_ptr.hpp"
-
 // ---- Project Files ---- //
-#include "CloudMask.h"
-#include "CloudShadowMatching.h"
-#include "ComputeEnvironment.h"
-#include "Functions.h"
-#include "GaussianBlur.h"
-#include "ImageOperations.h"
-#include "Imageio.h"
-#include "PitFillAlgorithm.h"
-#include "PotentialShadowMask.h"
-#include "ProbabilityRefinement.h"
-#include "SceneClassificationLayer.h"
-#include "ShadowMaskEvaluation.h"
-#include "VectorGridOperations.h"
-#include "types.h"
+#include "cloud_shadow_detection/CloudMask.h"
+#include "cloud_shadow_detection/CloudShadowMatching.h"
+#include "cloud_shadow_detection/ComputeEnvironment.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/GaussianBlur.h"
+#include "cloud_shadow_detection/ImageOperations.h"
+#include "cloud_shadow_detection/Imageio.h"
+#include "cloud_shadow_detection/PitFillAlgorithm.h"
+#include "cloud_shadow_detection/PotentialShadowMask.h"
+#include "cloud_shadow_detection/ProbabilityRefinement.h"
+#include "cloud_shadow_detection/SceneClassificationLayer.h"
+#include "cloud_shadow_detection/ShadowMaskEvaluation.h"
+#include "cloud_shadow_detection/VectorGridOperations.h"
+#include "cloud_shadow_detection/types.h"
 
 using namespace lyra;
 
@@ -61,7 +58,7 @@ int main(int argc, char **argv) {
     spdlog::debug("Parsing CLI...");
     parse_result result = cli.parse({argc, argv});
 
-    spdlog::debug("Interpretting and loading CLI Input...");
+    spdlog::debug("Interpreting and loading CLI Input...");
     if (!result) {
         spdlog::error("Error in command line: {}", result.message());
         spdlog::error("CLI: {}", helpMessage.str());
@@ -71,11 +68,6 @@ int main(int argc, char **argv) {
         spdlog::info("CLI: {}", helpMessage.str());
         return EXIT_SUCCESS;
     }
-
-    // data_path
-    //     = "C:\\Users\\jeffl\\Projects\\DGGS\\Cloud-Shadow-Detection-Result-"
-    //       "Generation\\settings\\2020-06-15\\data.toml";
-    // use_gui = true;
 
     if (!exists(data_path)) {
         spdlog::error("Input path does not exist");

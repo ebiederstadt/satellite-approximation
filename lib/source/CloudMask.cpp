@@ -1,8 +1,8 @@
-#include "CloudMask.h"
+#include "cloud_shadow_detection/CloudMask.h"
 
-#include "GaussianBlur.h"
-#include "ImageOperations.h"
-#include "SceneClassificationLayer.h"
+#include "cloud_shadow_detection/GaussianBlur.h"
+#include "cloud_shadow_detection/ImageOperations.h"
+#include "cloud_shadow_detection/SceneClassificationLayer.h"
 
 using namespace ImageOperations;
 using namespace GaussianBlur;

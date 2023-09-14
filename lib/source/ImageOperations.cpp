@@ -1,6 +1,6 @@
 #include <queue>
 
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 
 namespace ImageOperations {
 std::shared_ptr<ImageBool> Threshold(std::shared_ptr<ImageFloat> A, float threshold) {

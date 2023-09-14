@@ -30,4 +30,4 @@ target_link_libraries(
         OpenCL::Headers
         OpenCL::OpenCL
 )
-target_include_directories(cloud_shadow_detection PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/source)
+target_include_directories(cloud_shadow_detection PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")

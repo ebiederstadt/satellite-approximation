@@ -1,7 +1,7 @@
-#include "ShadowMaskEvaluation.h"
+#include "cloud_shadow_detection/ShadowMaskEvaluation.h"
 
-#include "Functions.h"
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/Functions.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 
 using namespace ImageOperations;
 

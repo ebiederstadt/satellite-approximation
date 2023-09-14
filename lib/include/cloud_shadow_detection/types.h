@@ -78,4 +78,7 @@ Plane operator*(Plane p, glm::mat4 M);
 glm::vec3 operator&(Plane p, Line l);
 glm::vec3 operator&(Line l, Plane p);
 
+using f32 = float;
+using f64 = double;
+
 #endif  // !SHADOW_DETECTION_TYPE_H

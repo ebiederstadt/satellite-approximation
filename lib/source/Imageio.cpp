@@ -1,6 +1,6 @@
-#include "Imageio.h"
+#include "cloud_shadow_detection/Imageio.h"
 
-#include "ImageOperations.h"
+#include "cloud_shadow_detection/ImageOperations.h"
 #include <spdlog/spdlog.h>
 #include "tiffio.h"
 
