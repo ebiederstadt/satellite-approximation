@@ -1,5 +1,5 @@
-#include "detectCloudsShadows.h"
-#include "fmt_filesystem.h"
+#include "cloud_shadow_detection/automatic_detection.h"
+#include "cloud_shadow_detection/fmt_filesystem.h"
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
@@ -180,8 +180,6 @@ namespace remote_sensing {
         LMSPointReturn ViewLSPointEqualTo_Return
                 = LSPointEqualTo(ViewVectorGrid, diagonal_distance, DistanceToView);
         glm::vec3 &ViewPosition = ViewLSPointEqualTo_Return.p;
-        float output_MDPSun = AverageDotProduct(SunVectorGrid, diagonal_distance, SunPosition);
-        float output_MDPView = AverageDotProduct(ViewVectorGrid, diagonal_distance, ViewPosition);
 
         spdlog::debug(" --- Object-based Shadow Mask Generation...");
         // Solve for the optimal shadow matching results per cloud
@@ -192,7 +190,6 @@ namespace remote_sensing {
                 = MatchCloudsShadows_Return.solutions;
         ShadowQuads &CloudCastedShadows = MatchCloudsShadows_Return.shadows;
         std::shared_ptr<ImageBool> &output_OSM = MatchCloudsShadows_Return.shadowMask;
-        float &TrimmedMeanCloudHeight = MatchCloudsShadows_Return.trimmedMeanHeight;
 
         spdlog::debug(" --- Generating Probability Function...");
         // Generate the Alpha and Beta maps to produce the probability surface
@@ -283,17 +280,17 @@ namespace remote_sensing {
 
         spdlog::debug("Starting calculation");
         spdlog::stopwatch sw;
-        for (size_t i = 0; i < directories.size(); ++i) {
+        for (const auto &directory: directories) {
             CloudParams params;
-            params.nir_path = directories[i] / fs::path("B08.tif");
-            params.clp_path = directories[i] / fs::path("CLP.tif");
-            params.cld_path = directories[i] / fs::path("CLD.tif");
-            params.scl_path = directories[i] / fs::path("SCL.tif");
-            params.rgb_path = directories[i] / fs::path("RGB.tif");
-            params.view_zenith_path = directories[i] / fs::path("viewZenithMean.tif");
-            params.view_azimuth_path = directories[i] / fs::path("viewAzimuthMean.tif");
-            params.sun_zenith_path = directories[i] / fs::path("sunZenithAngles.tif");
-            params.sun_azimuth_path = directories[i] / fs::path("sunAzimuthAngles.tif");
+            params.nir_path = directory / fs::path("B08.tif");
+            params.clp_path = directory / fs::path("CLP.tif");
+            params.cld_path = directory / fs::path("CLD.tif");
+            params.scl_path = directory / fs::path("SCL.tif");
+            params.rgb_path = directory / fs::path("RGB.tif");
+            params.view_zenith_path = directory / fs::path("viewZenithMean.tif");
+            params.view_azimuth_path = directory / fs::path("viewAzimuthMean.tif");
+            params.sun_zenith_path = directory / fs::path("sunZenithAngles.tif");
+            params.sun_azimuth_path = directory / fs::path("sunAzimuthAngles.tif");
 
             detect(params, diagonal_distance, skipShadowDetection, use_cache);
         }

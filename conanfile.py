@@ -18,7 +18,6 @@ class Recipe(ConanFile):
             "spdlog/1.12.0",
             "nlohmann_json/3.11.2",
             "glm/cci.20230113",
-            "glfw/3.3.8",
             "libtiff/4.5.0",
             "boost/1.82.0",
             "opencl-headers/2023.04.17",

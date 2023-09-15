@@ -4,7 +4,7 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
-#include "detectCloudsShadows.h"
+#include <cloud_shadow_detection/automatic_detection.h>
 
 namespace py = pybind11;
 using namespace py::literals;

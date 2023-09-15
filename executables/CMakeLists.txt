@@ -1,6 +1,6 @@
-add_executable(main_cloud_detection main.cpp)
-target_include_directories(main_cloud_detection PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(main_cloud_detection
+add_executable(main_cloud_detection main-cloud-detection.cpp)
+
+set(libraries
         cloud_shadow_detection
         bfg::lyra
         tomlplusplus::tomlplusplus
@@ -13,5 +13,5 @@ target_link_libraries(main_cloud_detection
         Boost::headers
         Boost::boost
         OpenCL::Headers
-        OpenCL::OpenCL
-)
+        OpenCL::OpenCL)
+target_link_libraries(main_cloud_detection ${libraries})

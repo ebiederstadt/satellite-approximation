@@ -1,6 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(cloud_shadow_detection STATIC
+        source/automatic_detection.cpp
         source/CloudMask.cpp
         source/CloudShadowMatching.cpp
         source/ComputeEnvironment.cpp
@@ -25,7 +26,6 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
         glm::glm
         glfw
-        opengl::opengl
         TIFF::TIFF
         Boost::headers
         Boost::boost

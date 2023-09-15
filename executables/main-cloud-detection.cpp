@@ -21,7 +21,6 @@
 #include "cloud_shadow_detection/PitFillAlgorithm.h"
 #include "cloud_shadow_detection/PotentialShadowMask.h"
 #include "cloud_shadow_detection/ProbabilityRefinement.h"
-#include "cloud_shadow_detection/SceneClassificationLayer.h"
 #include "cloud_shadow_detection/ShadowMaskEvaluation.h"
 #include "cloud_shadow_detection/VectorGridOperations.h"
 #include "cloud_shadow_detection/types.h"

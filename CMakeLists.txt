@@ -16,19 +16,15 @@ find_package(spdlog REQUIRED)
 find_package(imgui REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glm REQUIRED)
-find_package(glfw3 REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(Boost REQUIRED)
 find_package(OpenCLHeaders REQUIRED)
 find_package(OpenCLICDLoader REQUIRED)
-find_package(OpenGL REQUIRED)
 
-add_subdirectory(lib)
+add_subdirectory(lib/cloud_shadow_detection)
 add_subdirectory(executables)
 
-set(source_files
-        src/main.cpp
-        src/detectCloudsShadows.cpp)
+set(source_files src/main.cpp)
 python_add_library(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers cloud_shadow_detection
         bfg::lyra
