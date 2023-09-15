@@ -1,3 +1,5 @@
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 add_library(cloud_shadow_detection STATIC
         source/CloudMask.cpp
         source/CloudShadowMatching.cpp

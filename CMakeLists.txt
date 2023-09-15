@@ -26,8 +26,24 @@ find_package(OpenGL REQUIRED)
 add_subdirectory(lib)
 add_subdirectory(executables)
 
-python_add_library(_core MODULE src/main.cpp WITH_SOABI)
-target_link_libraries(_core PRIVATE pybind11::headers cloud_shadow_detection)
+set(source_files
+        src/main.cpp
+        src/detectCloudsShadows.cpp)
+python_add_library(_core MODULE ${source_files} WITH_SOABI)
+target_link_libraries(_core PRIVATE pybind11::headers cloud_shadow_detection
+        bfg::lyra
+        tomlplusplus::tomlplusplus
+        Eigen3::Eigen
+        spdlog::spdlog
+        nlohmann_json::nlohmann_json
+        glm::glm
+        glfw
+        opengl::opengl
+        TIFF::TIFF
+        Boost::headers
+        Boost::boost
+        OpenCL::Headers
+        OpenCL::OpenCL)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 install(TARGETS _core DESTINATION sentinel_cloud_detection)

@@ -483,7 +483,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    spdlog::debug("Initizing Computing Context...");
+    spdlog::debug("Initialing Computing Context...");
 
     ComputeEnvironment::InitMainContext();
     GaussianBlur::init();
@@ -521,7 +521,7 @@ int main(int argc, char **argv) {
     std::shared_ptr<ImageFloat> DeltaNIR
         = GeneratePotentialShadowMask_Return.difference_of_pitfill_NIR;
 
-    spdlog::debug(" --- Solving for Sun and Satillite Position...");
+    spdlog::debug(" --- Solving for Sun and Satellite Position...");
     // Generate a Vector grid for each
     std::shared_ptr<VectorGrid> SunVectorGrid
         = GenerateVectorGrid(toRadians(data_SunZenith), toRadians(data_SunAzimuth));

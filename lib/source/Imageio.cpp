@@ -34,7 +34,7 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint8(const Path path) {
     if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageUint> ret;
     TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cant open file");
+    if (!tif) throw std::runtime_error("Cannot open file");
     else {
         std::vector<uint8_t> retVal;
         uint32_t width, height;
@@ -202,7 +202,7 @@ void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloa
 
 void Imageio::WriteSingleChannelUint8(const Path path, std::shared_ptr<ImageUint> image) {
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+    if (path.extension() != Path(".tif")) throw std::runtime_error("Extension must be tif");
     if (std::filesystem::exists(path)) std::filesystem::remove(path);
     TIFF *tif = TIFFOpen(path.string().c_str(), "w");
     if (!tif) throw std::runtime_error("Cant open file");
