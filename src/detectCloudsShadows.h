@@ -9,7 +9,6 @@ namespace fs = std::filesystem;
 
 namespace remote_sensing {
     struct CloudParams {
-        std::array<f64, 4> bbox;
         fs::path nir_path;
         fs::path clp_path;
         fs::path cld_path;
@@ -28,9 +27,10 @@ namespace remote_sensing {
 
     struct SkipShadowDetection {
         bool decision = false;
-        f64 threshold;
+        f64 threshold = 0.0;
     };
 
-    f32 get_diagonal_distance(std::array<f64, 4> const &bbox);
+    f32 get_diagonal_distance(f64 min_long, f64 min_lat, f64 max_long, f64 max_lat);
     void detect(CloudParams const &params, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache);
+    void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache);
 }

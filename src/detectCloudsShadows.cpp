@@ -3,6 +3,8 @@
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
+#include <boost/regex.hpp>
 
 #include "cloud_shadow_detection/Functions.h"
 #include "cloud_shadow_detection/ProbabilityRefinement.h"
@@ -46,10 +48,10 @@ namespace remote_sensing {
         return nir_path.parent_path() / "shadow_mask.tif";
     }
 
-    f32 get_diagonal_distance(std::array<f64, 4> const &bbox) {
+    f32 get_diagonal_distance(f64 min_long, f64 min_lat, f64 max_long, f64 max_lat) {
         return Functions::distance(
-                {bbox[0], bbox[1]},
-                {bbox[2], bbox[3]}
+                {min_long, min_lat},
+                {max_long, max_lat}
         );
     }
 
@@ -110,7 +112,7 @@ namespace remote_sensing {
                                 e.what()));
         }
 
-        // Because shado w detection can be a slow process, we provide a way for the user to skip it if too many of the pixels contain shadows
+        // Because shadow detection can be a slow process, we provide a way for the user to skip it if too many of the pixels contain shadows
         if (skipShadowDetection.decision) {
             f64 percent = static_cast<f64>(output_CM->cast<int>().sum()) / static_cast<f64>(output_CM->size());
             if (percent >= skipShadowDetection.threshold) {
@@ -249,5 +251,53 @@ namespace remote_sensing {
                     fmt::format("Failed to write potential shadow mask. Path: {}. Message: {}", params.cloud_path(),
                                 e.what()));
         }
+    }
+
+    enum DirectoryContents {
+        NoSatelliteData,
+        MultiSpectral,
+        Radar
+    };
+
+    DirectoryContents find_directory_contents(fs::path const &path) {
+        boost::regex expr{R"(\d{4}-\d{2}-\d{2})"};
+        if (!boost::regex_match(path.filename().string(), expr)) {
+            return DirectoryContents::NoSatelliteData;
+        }
+        fs::path candidate_path = path / fs::path("B04.tif");
+        if (fs::exists(candidate_path)) {
+            return DirectoryContents::MultiSpectral;
+        } else {
+            return DirectoryContents::Radar;
+        }
+    }
+
+    void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDetection skipShadowDetection,
+                          bool use_cache) {
+        std::vector<fs::path> directories;
+        for (auto const &folder: fs::directory_iterator(folder_path)) {
+            if (fs::is_directory(folder) && find_directory_contents(folder) == DirectoryContents::MultiSpectral) {
+                directories.push_back(folder);
+            }
+        }
+
+        spdlog::debug("Starting calculation");
+        spdlog::stopwatch sw;
+        for (size_t i = 0; i < directories.size(); ++i) {
+            CloudParams params;
+            params.nir_path = directories[i] / fs::path("B08.tif");
+            params.clp_path = directories[i] / fs::path("CLP.tif");
+            params.cld_path = directories[i] / fs::path("CLD.tif");
+            params.scl_path = directories[i] / fs::path("SCL.tif");
+            params.rgb_path = directories[i] / fs::path("RGB.tif");
+            params.view_zenith_path = directories[i] / fs::path("viewZenithMean.tif");
+            params.view_azimuth_path = directories[i] / fs::path("viewAzimuthMean.tif");
+            params.sun_zenith_path = directories[i] / fs::path("sunZenithAngles.tif");
+            params.sun_azimuth_path = directories[i] / fs::path("sunAzimuthAngles.tif");
+
+            detect(params, diagonal_distance, skipShadowDetection, use_cache);
+        }
+        spdlog::info("Finished computing");
+        spdlog::debug("Finished in {}", sw);
     }
 }
