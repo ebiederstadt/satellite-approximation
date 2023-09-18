@@ -75,8 +75,3 @@ Plane operator*(Plane p, glm::mat4 M);
 
 glm::vec3 operator&(Plane p, Line l);
 glm::vec3 operator&(Line l, Plane p);
-
-using u8 = std::uint8_t;
-using u32 = std::uint32_t;
-using f32 = float;
-using f64 = double;

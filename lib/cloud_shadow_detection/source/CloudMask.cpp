@@ -42,8 +42,8 @@ CloudMask::PartitionCloudMaskReturn CloudMask::PartitionCloudMask(
         for (int j = 0; j < ret.map->rows(); j++) {
             if (at(CloudMaskData, i, j) && at(ret.map, i, j) < 0) {  // Unassigned Cloud pixels
                 current_cloud_pixels = flood(CloudMaskData, i, j);
-                if (current_cloud_pixels.size()
-                    >= min_cloud_area) {  // Large enough to be counted as a cloud object
+                // Large enough to be counted as a cloud object
+                if (current_cloud_pixels.size() >= min_cloud_area) {
                     int min_x = std::numeric_limits<int>::max();
                     int min_y = std::numeric_limits<int>::max();
                     int max_x = std::numeric_limits<int>::min();
@@ -52,10 +52,8 @@ CloudMask::PartitionCloudMaskReturn CloudMask::PartitionCloudMask(
                         set(ret.map, p.x, p.y, CN);
                         min_x = std::min(min_x, int(p.x));
                         max_x = std::max(max_x, int(p.x));
-                        ;
                         min_y = std::min(min_y, int(p.y));
                         max_y = std::max(max_y, int(p.y));
-                        ;
                     }
                     cloud_temp.pixels.list      = current_cloud_pixels;
                     cloud_temp.pixels.bounds.p0 = glm::uvec2(min_x, min_y);

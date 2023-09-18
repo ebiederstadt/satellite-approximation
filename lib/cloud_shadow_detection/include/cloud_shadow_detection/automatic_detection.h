@@ -3,8 +3,9 @@
 #include <filesystem>
 #include <array>
 
-#include <cloud_shadow_detection/types.h>
+#include <givde/types.hpp>
 
+using namespace givde;
 namespace fs = std::filesystem;
 
 namespace remote_sensing {

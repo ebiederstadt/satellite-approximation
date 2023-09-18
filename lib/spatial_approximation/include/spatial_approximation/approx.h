@@ -1,0 +1,38 @@
+#pragma once
+
+#include <givde/types.hpp>
+
+using namespace givde;
+
+namespace spatial_approximation {
+    struct index_t {
+        Eigen::Index row;
+        Eigen::Index col;
+
+        bool operator==(index_t other) const {
+            return row == other.row && col == other.col;
+        }
+    };
+
+    std::vector<index_t> flood(MatX<bool> const &invalid, Eigen::Index row, Eigen::Index col);
+    std::vector<index_t> valid_neighbours(MatX<bool> const &image, index_t index);
+
+    struct ConnectedComponents {
+        MatX<int> matrix;
+        std::unordered_map<int, index_t> region_start;
+    };
+
+    /**
+     * Find the portions of an image that are connected to each other
+     * @param image: a binary image with true == pixel is invalid
+     */
+    ConnectedComponents find_connected_components(MatX<bool> const &invalid);
+
+    /** Fill a missing region of an image, assuming that boundary of the image is smooth
+     * (Laplace equation with dirichlet boundary conditions)
+     * @param input_image: The input image
+     * @param invalid_mask: A mask identifying what portions of the image are invalid
+     * @return
+     */
+    Mat2<f64> fill_missing_portion_smooth_boundary(MatX<f64> const &input_image, std::vector<index_t> const &invalid_pixels);
+}

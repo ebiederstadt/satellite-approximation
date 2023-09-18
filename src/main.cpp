@@ -11,7 +11,7 @@ using namespace py::literals;
 
 PYBIND11_MODULE(_core, m)
 {
-    m.doc() = "Cloud and shadow detection for sentinel satellite imagery";
+    m.doc() = "Data processing for sentinel satellite imagery";
 
     py::class_<std::filesystem::path>(m, "Path")
             .def(py::init<std::string>());
@@ -25,6 +25,7 @@ PYBIND11_MODULE(_core, m)
             .value("Critical", spdlog::level::level_enum::critical);
     m.def("set_log_level", [](spdlog::level::level_enum level) {
         spdlog::set_level(level);
+        spdlog::info("Logging set to level: {}", to_short_c_str(level));
     });
 
     py::class_<remote_sensing::CloudParams>(m, "CloudParams")
