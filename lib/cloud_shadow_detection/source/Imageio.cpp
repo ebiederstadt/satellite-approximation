@@ -22,8 +22,8 @@ std::shared_ptr<ImageFloat> Imageio::ReadSingleChannelFloat(const Path path) {
                 throw std::runtime_error("Falure when reading file");
             }
         ret = std::make_shared<ImageFloat>(
-            Eigen::Map<ImageFloat>(reinterpret_cast<float *>(retVal.data()), height, width)
-                .cast<float>()
+                Eigen::Map<ImageFloat>(reinterpret_cast<float *>(retVal.data()), height, width)
+                        .cast<float>()
         );
         TIFFClose(tif);
     }
@@ -49,8 +49,8 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint8(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                .cast<unsigned int>()
+                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
+                        .cast<unsigned int>()
         );
 
         TIFFClose(tif);
@@ -77,8 +77,8 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint16(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                .cast<unsigned int>()
+                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
+                        .cast<unsigned int>()
         );
 
         TIFFClose(tif);
@@ -105,8 +105,8 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint32(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                .cast<unsigned int>()
+                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
+                        .cast<unsigned int>()
         );
         TIFFClose(tif);
     }
@@ -130,8 +130,8 @@ std::shared_ptr<ImageUint> Imageio::ReadRGBA(const Path path) {
         } else {
             std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
             ret = std::make_shared<ImageUint>(
-                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                    .cast<unsigned int>()
+                    Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
+                            .cast<unsigned int>()
             );
         }
         TIFFClose(tif);
@@ -139,7 +139,13 @@ std::shared_ptr<ImageUint> Imageio::ReadRGBA(const Path path) {
     return ret;
 }
 
-void quietHandler(const char *module, const char *fmt, va_list args) { return; }
+void quietHandler(const char *
+
+module,
+const char *fmt, va_list
+args) {
+return; }
+
 void Imageio::SupressLibTIFF() {
     TIFFSetErrorHandler(quietHandler);
     TIFFSetWarningHandler(quietHandler);
@@ -162,18 +168,18 @@ void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloa
     else {
         image = std::make_shared<ImageFloat>(image->colwise().reverse());
         std::vector<float> imageData
-            = std::vector<float>(image->data(), image->data() + image->size());
+                = std::vector<float>(image->data(), image->data() + image->size());
 
         // Set values to use
-        uint32_t width           = image->cols();
-        uint32_t height          = image->rows();
-        uint32_t bitsPerSample   = 32;
-        uint32_t bytesPerSample  = 4;
+        uint32_t width = image->cols();
+        uint32_t height = image->rows();
+        uint32_t bitsPerSample = 32;
+        uint32_t bytesPerSample = 4;
         uint32_t samplesPerPixel = 1;
-        uint32_t lineSize        = samplesPerPixel * width;
-        uint32_t lineBytes       = lineSize * bytesPerSample;
-        uint32_t lineBufferSize  = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-        uint32_t stripSize       = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+        uint32_t lineSize = samplesPerPixel * width;
+        uint32_t lineBytes = lineSize * bytesPerSample;
+        uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+        uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
 
         // Set image fields
         TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
@@ -209,21 +215,18 @@ void Imageio::WriteSingleChannelUint8(const Path path, std::shared_ptr<ImageUint
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint8_t> imageData
-            = std::vector<uint8_t>(image->data(), image->data() + image->size());
-
-        // transform(imageData.begin(), imageData.end(), imageData.begin(), [](uint8_t in_v)
-        // { return 50u * in_v; });
+                = std::vector<uint8_t>(image->data(), image->data() + image->size());
 
         // Set values to use
-        uint32_t width           = image->cols();
-        uint32_t height          = image->rows();
-        uint32_t bitsPerSample   = 8;
-        uint32_t bytesPerSample  = 1;
+        uint32_t width = image->cols();
+        uint32_t height = image->rows();
+        uint32_t bitsPerSample = 8;
+        uint32_t bytesPerSample = 1;
         uint32_t samplesPerPixel = 1;
-        uint32_t lineSize        = samplesPerPixel * width;
-        uint32_t lineBytes       = lineSize * bytesPerSample;
-        uint32_t lineBufferSize  = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-        uint32_t stripSize       = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+        uint32_t lineSize = samplesPerPixel * width;
+        uint32_t lineBytes = lineSize * bytesPerSample;
+        uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+        uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
 
         // Set image fields
         TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
@@ -259,18 +262,18 @@ void Imageio::WriteSingleChannelUint16(const Path path, std::shared_ptr<ImageUin
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint16_t> imageData
-            = std::vector<uint16_t>(image->data(), image->data() + image->size());
+                = std::vector<uint16_t>(image->data(), image->data() + image->size());
 
         // Set values to use
-        uint32_t width           = image->cols();
-        uint32_t height          = image->rows();
-        uint32_t bitsPerSample   = 16;
-        uint32_t bytesPerSample  = 2;
+        uint32_t width = image->cols();
+        uint32_t height = image->rows();
+        uint32_t bitsPerSample = 16;
+        uint32_t bytesPerSample = 2;
         uint32_t samplesPerPixel = 1;
-        uint32_t lineSize        = samplesPerPixel * width;
-        uint32_t lineBytes       = lineSize * bytesPerSample;
-        uint32_t lineBufferSize  = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-        uint32_t stripSize       = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+        uint32_t lineSize = samplesPerPixel * width;
+        uint32_t lineBytes = lineSize * bytesPerSample;
+        uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+        uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
 
         // Set image fields
         TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
@@ -306,21 +309,21 @@ void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUin
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint32_t> imageData
-            = std::vector<uint32_t>(image->data(), image->data() + image->size());
+                = std::vector<uint32_t>(image->data(), image->data() + image->size());
 
         // transform(imageData.begin(), imageData.end(), imageData.begin(), [](uint32_t in_v) {
         // return uint64_t(858993459u) * uint64_t(in_v); });
 
         // Set values to use
-        uint32_t width           = image->cols();
-        uint32_t height          = image->rows();
-        uint32_t bitsPerSample   = 32;
-        uint32_t bytesPerSample  = 4;
+        uint32_t width = image->cols();
+        uint32_t height = image->rows();
+        uint32_t bitsPerSample = 32;
+        uint32_t bytesPerSample = 4;
         uint32_t samplesPerPixel = 1;
-        uint32_t lineSize        = samplesPerPixel * width;
-        uint32_t lineBytes       = lineSize * bytesPerSample;
-        uint32_t lineBufferSize  = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-        uint32_t stripSize       = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+        uint32_t lineSize = samplesPerPixel * width;
+        uint32_t lineBytes = lineSize * bytesPerSample;
+        uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+        uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
 
         // Set image fields
         TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
@@ -347,6 +350,55 @@ void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUin
     }
 }
 
+void Imageio::WriteSingleChannelInt32(Path const &path, ImageInt image) {
+    createParentDirectory(path);
+    if (path.extension() != ".tif") {
+        throw std::runtime_error("File extension must be a tif");
+    }
+    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif) throw std::runtime_error("Cant open file");
+    image = image.colwise().reverse();
+    std::vector<uint32_t> imageData
+            = std::vector<uint32_t>(image.data(), image.data() + image.size());
+
+    // transform(imageData.begin(), imageData.end(), imageData.begin(), [](uint32_t in_v) {
+    // return uint64_t(858993459u) * uint64_t(in_v); });
+
+    // Set values to use
+    uint32_t width = image.cols();
+    uint32_t height = image.rows();
+    uint32_t bitsPerSample = 32;
+    uint32_t bytesPerSample = 4;
+    uint32_t samplesPerPixel = 1;
+    uint32_t lineSize = samplesPerPixel * width;
+    uint32_t lineBytes = lineSize * bytesPerSample;
+    uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+    uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+
+    // Set image fields
+    TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
+    TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, samplesPerPixel);
+    TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
+    TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+    TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, stripSize);
+    TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+    TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_INT);
+    TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+
+    std::vector<int32_t> lineBufferData = std::vector<int32_t>(lineBufferSize);
+
+    for (size_t y = 0; y < height; y++) {
+        memcpy(lineBufferData.data(), &imageData[y * lineSize], lineBytes);
+        if (TIFFWriteScanline(tif, lineBufferData.data(), y) == -1) {
+            TIFFClose(tif);
+            throw std::runtime_error("Failure when writing file");
+        }
+    }
+    TIFFClose(tif);
+}
+
 void Imageio::WriteRGBA(const Path path, std::shared_ptr<ImageUint> image) {
     createParentDirectory(path);
     if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
@@ -354,19 +406,19 @@ void Imageio::WriteRGBA(const Path path, std::shared_ptr<ImageUint> image) {
     TIFF *tif = TIFFOpen(path.string().c_str(), "w");
     if (!tif) throw std::runtime_error("Cant open file");
     else {
-        image                          = std::make_shared<ImageUint>(image->colwise().reverse());
+        image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint8_t> imageData = ImageOperations::decomposeRBGA256(image);
 
         // Set values to use
-        uint32_t width           = image->cols();
-        uint32_t height          = image->rows();
-        uint32_t bitsPerSample   = 8;
-        uint32_t bytesPerSample  = 1;
+        uint32_t width = image->cols();
+        uint32_t height = image->rows();
+        uint32_t bitsPerSample = 8;
+        uint32_t bytesPerSample = 1;
         uint32_t samplesPerPixel = 4;
-        uint32_t lineSize        = samplesPerPixel * width;
-        uint32_t lineBytes       = lineSize * bytesPerSample;
-        uint32_t lineBufferSize  = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-        uint32_t stripSize       = TIFFDefaultStripSize(tif, width * samplesPerPixel);
+        uint32_t lineSize = samplesPerPixel * width;
+        uint32_t lineBytes = lineSize * bytesPerSample;
+        uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
+        uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
 
         // Set image fields
         TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);

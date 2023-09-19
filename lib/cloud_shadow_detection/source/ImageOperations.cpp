@@ -165,7 +165,7 @@ namespace ImageOperations {
     unsigned int SubCoverCount(std::shared_ptr<ImageBool> A, ImageBounds bounds) {
         unsigned int count = 0u;
         for (size_t i = std::max(0u, bounds.p0.x); i < std::min(glm::u32(A->cols() - 1u), bounds.p1.x);
-             i++) {d
+             i++) {
             for (size_t j = std::max(0u, bounds.p0.y);
                  j < std::min(glm::u32(A->rows() - 1u), bounds.p1.y);
                  j++) {
