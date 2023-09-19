@@ -22,6 +22,12 @@ namespace spatial_approximation {
         std::unordered_map<int, std::vector<index_t>> region_map;
     };
 
+    enum Status {
+        NoChange = 0,
+        Approximated = 1,
+        ApproximationFailed = 2
+    };
+
     /**
      * Find the portions of an image that are connected to each other
      * @param image: a binary image with true == pixel is invalid
@@ -32,7 +38,7 @@ namespace spatial_approximation {
      * (Laplace equation with dirichlet boundary conditions)
      * @param input_image: The input image
      * @param invalid_mask: A mask identifying what portions of the image are invalid
-     * @return
+     * @returns: A matrix representing approximation status for each region
      */
     void fill_missing_portion_smooth_boundary(MatX<f64> &input_image, MatX<bool> const &invalid_pixels);
 }

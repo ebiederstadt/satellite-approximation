@@ -24,9 +24,11 @@ find_package(Boost REQUIRED)
 find_package(OpenCLHeaders REQUIRED)
 find_package(OpenCLICDLoader REQUIRED)
 find_package(range-v3 REQUIRED)
+find_package(GDAL REQUIRED)
 
 add_subdirectory(lib/cloud_shadow_detection)
 add_subdirectory(lib/spatial_approximation)
+add_subdirectory(lib/utils)
 add_subdirectory(executables)
 
 set(source_files src/main.cpp)

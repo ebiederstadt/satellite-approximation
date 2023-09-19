@@ -161,7 +161,7 @@ static void createParentDirectory(std::filesystem::path const &path) {
 
 void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloat> image) {
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+    if (path.extension() != Path(".tif")) throw std::runtime_error("Extension must be tif");
     if (std::filesystem::exists(path)) std::filesystem::remove(path);
     TIFF *tif = TIFFOpen(path.string().c_str(), "w");
     if (!tif) throw std::runtime_error("Cant open file");
@@ -348,55 +348,6 @@ void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUin
         }
         TIFFClose(tif);
     }
-}
-
-void Imageio::WriteSingleChannelInt32(Path const &path, ImageInt image) {
-    createParentDirectory(path);
-    if (path.extension() != ".tif") {
-        throw std::runtime_error("File extension must be a tif");
-    }
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Cant open file");
-    image = image.colwise().reverse();
-    std::vector<uint32_t> imageData
-            = std::vector<uint32_t>(image.data(), image.data() + image.size());
-
-    // transform(imageData.begin(), imageData.end(), imageData.begin(), [](uint32_t in_v) {
-    // return uint64_t(858993459u) * uint64_t(in_v); });
-
-    // Set values to use
-    uint32_t width = image.cols();
-    uint32_t height = image.rows();
-    uint32_t bitsPerSample = 32;
-    uint32_t bytesPerSample = 4;
-    uint32_t samplesPerPixel = 1;
-    uint32_t lineSize = samplesPerPixel * width;
-    uint32_t lineBytes = lineSize * bytesPerSample;
-    uint32_t lineBufferSize = std::max(lineSize, uint32_t(TIFFScanlineSize(tif)));
-    uint32_t stripSize = TIFFDefaultStripSize(tif, width * samplesPerPixel);
-
-    // Set image fields
-    TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bitsPerSample);
-    TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, samplesPerPixel);
-    TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
-    TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
-    TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, stripSize);
-    TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
-    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-    TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_INT);
-    TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
-
-    std::vector<int32_t> lineBufferData = std::vector<int32_t>(lineBufferSize);
-
-    for (size_t y = 0; y < height; y++) {
-        memcpy(lineBufferData.data(), &imageData[y * lineSize], lineBytes);
-        if (TIFFWriteScanline(tif, lineBufferData.data(), y) == -1) {
-            TIFFClose(tif);
-            throw std::runtime_error("Failure when writing file");
-        }
-    }
-    TIFFClose(tif);
 }
 
 void Imageio::WriteRGBA(const Path path, std::shared_ptr<ImageUint> image) {

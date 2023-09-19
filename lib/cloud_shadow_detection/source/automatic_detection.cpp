@@ -1,5 +1,5 @@
 #include "cloud_shadow_detection/automatic_detection.h"
-#include "cloud_shadow_detection/fmt_filesystem.h"
+#include <utils/fmt_filesystem.h>
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>

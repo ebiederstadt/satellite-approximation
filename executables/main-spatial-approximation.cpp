@@ -1,39 +1,40 @@
-#include <cloud_shadow_detection/types.h>
-#include <cloud_shadow_detection/Imageio.h>
-#include <cloud_shadow_detection/fmt_filesystem.h>
 #include <spatial_approximation/approx.h>
+#include <utils/geotiff.h>
+#include <utils/fmt_filesystem.h>
 #include <spdlog/spdlog.h>
 #include <filesystem>
+#include <gdal/gdal_priv.h>
 
 namespace fs = std::filesystem;
 
-int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        spdlog::error("Usage: {} image_path.tif, cloud_path.tif output_path.tif", argv[0]);
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        spdlog::error("Usage: {} template_path output_path", argv[0]);
         return -1;
     }
 
     spdlog::set_level(spdlog::level::debug);
+    GDALAllRegister();
 
-    fs::path data_path = argv[1];
-    if (!fs::exists(data_path)) {
-        spdlog::error("Data path does not exist: {}", data_path);
-        return -1;
+    fs::path template_path = argv[1];
+    if (!fs::exists(template_path)) {
+        spdlog::error("Could not find provided template: {}", template_path);
     }
-    std::shared_ptr<ImageFloat> data = Imageio::ReadSingleChannelFloat(data_path);
-    MatX<f64> data_matrix = data->cast<f64>();
+    utils::GeoTIFF<f64> template_geotiff(template_path.string());
 
-    fs::path cloud_path = argv[2];
-    if (!fs::exists(cloud_path)) {
-        spdlog::error("Cloud path does not exist: {}", cloud_path);
-        return -1;
+    MatX<bool> cloud_matrix(template_geotiff.height, template_geotiff.width);
+    cloud_matrix.fill(false);
+    cloud_matrix.block<50, 50>(20, 20) = Eigen::Matrix<bool, 50, 50>::Ones();
+    template_geotiff.values.block<50, 50>(20, 20) = Eigen::Matrix<f64, 50, 50>::Constant(0.0);
+
+    fs::path output_path = argv[2];
+    fs::path test_path = output_path.parent_path() / fs::path("test.tif");
+    template_geotiff.write(test_path);
+
+    spatial_approximation::fill_missing_portion_smooth_boundary(template_geotiff.values, cloud_matrix);
+
+    if (fs::exists(output_path)) {
+        fs::remove(output_path);
     }
-    std::shared_ptr<ImageUint> data_clouds = Imageio::ReadSingleChannelUint8(cloud_path);
-    MatX<bool> cloud_matrix = data_clouds->cast<bool>();
-
-    spatial_approximation::fill_missing_portion_smooth_boundary(data_matrix, cloud_matrix);
-
-    fs::path output_path = argv[3];
-    std::shared_ptr<ImageFloat> output_image = std::make_shared<ImageFloat>(data_matrix.cast<f32>());
-    Imageio::WriteSingleChannelFloat(output_path, output_image);
+    template_geotiff.write(output_path);
 }

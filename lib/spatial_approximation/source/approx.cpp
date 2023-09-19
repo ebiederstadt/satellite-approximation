@@ -15,22 +15,30 @@ namespace spatial_approximation {
     using sparse_t = Eigen::SparseMatrix<f64>;
     using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
 
-    bool on_bounds(MatX<bool> const &image, Eigen::Index row, Eigen::Index col) {
-        return (row == 0 || row == image.rows() - 1) || (col == 0 || col == image.cols() - 1);
-    }
+    void solve_matrix(MatX<f64> &input, MatX<bool> const &invalid_mask) {
+        std::vector<index_t> invalid_pixels;
+        for (Eigen::Index row = 0; row < invalid_mask.rows(); ++row) {
+            for (Eigen::Index col = 0; col < invalid_mask.cols(); ++col) {
+                if (invalid_mask(row, col)) {
+                    invalid_pixels.push_back({row, col});
+                }
+            }
+        }
+        if (invalid_pixels.empty()) {
+            spdlog::info("Could not perform approximation: no invalid pixels");
+            return;
+        }
 
-    void solve_matrix(MatX<f64> &input, MatX<bool> const &invalid_mask, std::vector<index_t> const &invalid_pixels) {
-        spdlog::debug("Matrix size: {}x{}", invalid_mask.rows(), invalid_mask.cols());
+        auto [min_row, max_row] = minmax(invalid_pixels | view::transform([](index_t i) { return i.row; }));
+        auto [min_col, max_col] = minmax(invalid_pixels | view::transform([](index_t i) { return i.col; }));
 
-        auto [min_x, max_x] = minmax(invalid_pixels | view::transform([](index_t i) { return i.row; }));
-        auto [min_y, max_y] = minmax(invalid_pixels | view::transform([](index_t i) { return i.col; }));
-        auto width = (max_x - min_x) + 1;
-        auto height = (max_y - min_y) + 1;
+        auto height = (max_row - min_row) + 1;
+        auto width = (max_col - min_col) + 1;
 
-        auto matrix_size = width * height;
+        auto matrix_size = height * width;
 
-        auto index = [&](Eigen::Index x, Eigen::Index y) {
-            return (x - min_x) + (y - min_y) * width;
+        auto index = [&](Eigen::Index row, Eigen::Index col) {
+            return (col - min_col) + (row - min_row) * height;
         };
 
         Eigen::VectorXd b(matrix_size);
@@ -38,47 +46,49 @@ namespace spatial_approximation {
 
         std::vector<Triplet<f64>> coefficients;
 
-        auto dirichlet_boundary_constraint_row = [&](Eigen::Index x, Eigen::Index y) {
+        auto dirichlet_boundary_constraint_row = [&](Eigen::Index row, Eigen::Index col) {
             // Results in a row with [... 0 0 1 0 0 ... ]
             // And the corresponding value in the b vector: [ ... 0 0 v 0 0 ...]^T
-            int i = index(x, y);
+            auto i = index(row, col);
             coefficients.push_back(Triplet<f64>(i, i, 1.0));
-            b[i] = input(x, y);
+            b[i] = input(row, col);
         };
 
-        auto set_coefficient = [&](Eigen::Index x, Eigen::Index y, int x_offset, int y_offset, f64 v) {
-            size_t i = index(x, y);
-            Eigen::Index x2 = x + x_offset;
-            Eigen::Index y2 = y + y_offset;
+        auto set_coefficient = [&](Eigen::Index row, Eigen::Index col, int x_offset, int y_offset, f64 v) {
+            auto i = index(row, col);
+            Eigen::Index row2 = row + x_offset;
+            Eigen::Index col2 = col + y_offset;
 
-            f64 pixel = input(x2, y2);
-            if (!invalid_mask(x2, y2)) {
+            f64 pixel = input(row2, col2);
+            if (!invalid_mask(row2, col2)) {
                 // If we know the value, then we move it into the b vector
                 // to keep symmetry with the dirichlet boundary constraint rows.
                 b[i] -= v * pixel;
                 return;
             }
-            size_t j = index(x2, y2);
-            assert(i >= 0 && i < invalid_mask.rows() - 1 && j >= 0 && j < invalid_mask.cols() - 1);
+            auto j = index(row2, col2);
+            if (!(i < matrix_size && j < matrix_size) || !(i >= 0 && j >= 0)) {
+                throw std::runtime_error(fmt::format("Failed to compute, i or j too large ({} and {}, matrix_size={})", i, col, matrix_size));
+            }
             coefficients.push_back(Triplet<f64>(i, j, v));
         };
 
-        auto laplacian_row = [&](Eigen::Index x, Eigen::Index y) {
+        // Problem comes from here!
+        auto laplacian_row = [&](Eigen::Index row, Eigen::Index col) {
             // Finite difference to construct laplacian
-            set_coefficient(x, y, -1, 0, 1.0);
-            set_coefficient(x, y, +1, 0, 1.0);
-            set_coefficient(x, y, 0, -1, 1.0);
-            set_coefficient(x, y, 0, +1, 1.0);
-            set_coefficient(x, y, 0, 0, -4.0);
+            set_coefficient(row, col, -1, 0, 1.0);
+            set_coefficient(row, col, +1, 0, 1.0);
+            set_coefficient(row, col, 0, -1, 1.0);
+            set_coefficient(row, col, 0, +1, 1.0);
+            set_coefficient(row, col, 0, 0, -4.0);
         };
 
-        for (auto [x, y]: view::cartesian_product(view::ints(min_x, max_x + 1), view::ints(min_y, max_y + 1))) {
-            if (on_bounds(invalid_mask, x, y)) {
-                dirichlet_boundary_constraint_row(x, y);
-            } else if (invalid_mask(x, y)) {
-                laplacian_row(x, y);
+        for (auto [row, col]: view::cartesian_product(
+                view::ints(min_row, max_row + 1), view::ints(min_col, max_col + 1))) {
+           if (invalid_mask(row, col)) {
+                laplacian_row(row, col);
             } else {
-                dirichlet_boundary_constraint_row(x, y);
+                dirichlet_boundary_constraint_row(row, col);
             }
         }
 
@@ -171,10 +181,6 @@ namespace spatial_approximation {
                                                  input_image.size(), invalid_pixels.size()));
         }
 
-        auto connected_components = find_connected_components(invalid_pixels);
-
-        for (auto const &[region_num, pixels_in_region]: connected_components.region_map) {
-            solve_matrix(input_image, invalid_pixels, pixels_in_region);
-        }
+        solve_matrix(input_image, invalid_pixels);
     }
 }

@@ -1,6 +1,7 @@
 add_executable(main_cloud_detection main-cloud-detection.cpp)
 
 set(libraries
+        utils
         cloud_shadow_detection
         bfg::lyra
         tomlplusplus::tomlplusplus
