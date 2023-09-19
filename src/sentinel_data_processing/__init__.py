@@ -6,5 +6,8 @@ __all__ = [
     "CloudParams",
     "SkipShadowDetection",
     "get_diagonal_distance",
-    "detect"
+    "detect",
+    "filling_missing_portions_smooth_boundaries",
+    "ConnectedComponents",
+    "find_connected_components"
 ]

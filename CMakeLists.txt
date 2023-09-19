@@ -5,6 +5,8 @@ project(
         VERSION ${SKBUILD_PROJECT_VERSION}
         LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
@@ -47,7 +49,7 @@ target_link_libraries(_core PRIVATE pybind11::headers
         OpenCL::OpenCL)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-install(TARGETS _core DESTINATION sentinel_cloud_detection)
+install(TARGETS _core DESTINATION sentinel_data_processing)
 
 enable_testing()
 find_package(doctest REQUIRED)

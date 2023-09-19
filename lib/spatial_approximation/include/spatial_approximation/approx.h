@@ -19,7 +19,7 @@ namespace spatial_approximation {
 
     struct ConnectedComponents {
         MatX<int> matrix;
-        std::unordered_map<int, index_t> region_start;
+        std::unordered_map<int, std::vector<index_t>> region_map;
     };
 
     /**
@@ -34,5 +34,5 @@ namespace spatial_approximation {
      * @param invalid_mask: A mask identifying what portions of the image are invalid
      * @return
      */
-    Mat2<f64> fill_missing_portion_smooth_boundary(MatX<f64> const &input_image, std::vector<index_t> const &invalid_pixels);
+    void fill_missing_portion_smooth_boundary(MatX<f64> &input_image, MatX<bool> const &invalid_pixels);
 }

@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.3.3", "pybind11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "sentinel_cloud_detection"
+name = "sentinel_data_processing"
 version = "0.0.1"
 description="A minimal example package (with pybind11)"
 requires-python = ">=3.7"

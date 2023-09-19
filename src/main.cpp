@@ -3,11 +3,14 @@
 #include <pybind11/eigen.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
+#include <givde/types.hpp>
 
 #include <cloud_shadow_detection/automatic_detection.h>
+#include <spatial_approximation/approx.h>
 
 namespace py = pybind11;
 using namespace py::literals;
+using namespace givde;
 
 PYBIND11_MODULE(_core, m)
 {
@@ -52,4 +55,11 @@ PYBIND11_MODULE(_core, m)
           "params"_a, "diagonal_distance"_a, "skip_shadow_detection"_a, "use_cache"_a);
     m.def("detect_in_folder", &remote_sensing::detect_in_folder,
           "folder_path"_a, "diagonal_distance"_a, "skipShadowDetection"_a, "use_cache"_a);
+
+    m.def("filling_missing_portions_smooth_boundaries", &spatial_approximation::fill_missing_portion_smooth_boundary,
+          "input_image"_a, "invalid_pixels"_a);
+    py::class_<spatial_approximation::ConnectedComponents>(m, "ConnectedComponents")
+            .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<spatial_approximation::index_t>>>());
+
+    m.def("find_connected_components", &spatial_approximation::find_connected_components, "invalid_mask"_a);
 }

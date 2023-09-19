@@ -58,7 +58,7 @@ TEST_CASE("connected components") {
         image.setConstant(false);
         auto components = find_connected_components(image);
         CHECK((components.matrix.array() == 0).all());
-        CHECK_EQ(components.region_start.size(), 0);
+        CHECK_EQ(components.region_map.size(), 0);
     }
 
     {
@@ -69,8 +69,8 @@ TEST_CASE("connected components") {
         auto components = find_connected_components(image);
         CHECK_EQ((components.matrix.array() == 1).count(), 4);
         CHECK_EQ((components.matrix.array() == 2).count(), 8);
-        CHECK_EQ(components.region_start.size(), 2);
-        CHECK_EQ(components.region_start.at(1), index_t{1, 1});
-        CHECK_EQ(components.region_start.at(2), index_t{5, 5});
+        CHECK_EQ(components.region_map.size(), 2);
+        CHECK_EQ(components.region_map.at(1).size(), 4);
+        CHECK_EQ(components.region_map.at(2).size(), 8);
     }
 }
