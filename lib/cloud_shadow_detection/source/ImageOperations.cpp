@@ -70,21 +70,6 @@ namespace ImageOperations {
         return pixelList;
     }
 
-    std::shared_ptr<ImageFloat> MIN(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B) {
-        if (!DIM_CHECK(A, B)) return nullptr;
-        return std::make_shared<ImageFloat>(A->array().min(B->array()));
-    }
-
-    std::shared_ptr<ImageFloat> MAX(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B) {
-        if (!DIM_CHECK(A, B)) return nullptr;
-        return std::make_shared<ImageFloat>(A->array().max(B->array()));
-    }
-
-    std::shared_ptr<ImageFloat> ADD(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B) {
-        if (!DIM_CHECK(A, B)) return nullptr;
-        return std::make_shared<ImageFloat>((*A) + (*B));
-    }
-
     std::shared_ptr<ImageFloat> SUBTRACT(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B) {
         if (!DIM_CHECK(A, B)) return nullptr;
         return std::make_shared<ImageFloat>((*A) - (*B));
@@ -93,10 +78,6 @@ namespace ImageOperations {
     std::shared_ptr<ImageFloat> DIVIDE(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B) {
         if (!DIM_CHECK(A, B)) return nullptr;
         return std::make_shared<ImageFloat>((*A).cwiseQuotient(*B));
-    }
-
-    std::shared_ptr<ImageFloat> NEGATE(std::shared_ptr<ImageFloat> A) {
-        return std::make_shared<ImageFloat>(-(*A));
     }
 
     std::shared_ptr<ImageUint> ADD(std::shared_ptr<ImageUint> A, std::shared_ptr<ImageUint> B) {

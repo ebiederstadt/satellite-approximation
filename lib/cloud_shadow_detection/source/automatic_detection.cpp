@@ -1,5 +1,7 @@
 #include "cloud_shadow_detection/automatic_detection.h"
 #include <utils/fmt_filesystem.h>
+#include <utils/geotiff.h>
+#include <pybind11/pybind11.h>
 
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
@@ -25,6 +27,8 @@ using namespace PotentialShadowMask;
 using namespace VectorGridOperations;
 using namespace CloudShadowMatching;
 using namespace ProbabilityRefinement;
+
+namespace py = pybind11;
 
 namespace remote_sensing {
     static constexpr int MinimimumCloudSizeForRayCasting = 3;
@@ -104,8 +108,11 @@ namespace remote_sensing {
                 = generated_cloud_mask.blendedCloudProbability;
         std::shared_ptr<ImageBool> &output_CM = generated_cloud_mask.cloudMask;
 
+        utils::GeoTIFF<u8> template_geotiff(params.nir_path);
         try {
-            WriteSingleChannelUint8(params.cloud_path(), cast<unsigned int>(output_CM, 1u, 0u));
+            template_geotiff.values = output_CM->cast<u8>();
+            template_geotiff.values.colwise().reverseInPlace();
+            template_geotiff.write(params.cloud_path());
         } catch (std::runtime_error const &e) {
             throw std::runtime_error(
                     fmt::format("Failed to write cloud mask. Path: {}. Message: {}", params.cloud_path(),
@@ -218,7 +225,9 @@ namespace remote_sensing {
 
         spdlog::debug("Saving shadow results");
         try {
-            WriteSingleChannelUint8(params.shadow_potential_path(), cast<u32>(output_PSM, 1u, 0u));
+            template_geotiff.values = output_PSM->cast<u8>();
+            template_geotiff.values.colwise().reverseInPlace();
+            template_geotiff.write(params.shadow_potential_path());
         } catch (std::runtime_error const &e) {
             throw std::runtime_error(
                     fmt::format("Failed to write potential shadow mask. Path: {}. Message: {}", params.cloud_path(),
@@ -226,15 +235,9 @@ namespace remote_sensing {
         }
 
         try {
-            WriteSingleChannelUint8(params.shadow_potential_path(), cast<u32>(output_PSM, 1u, 0u));
-        } catch (std::runtime_error const &e) {
-            throw std::runtime_error(
-                    fmt::format("Failed to write potential shadow mask. Path: {}. Message: {}", params.cloud_path(),
-                                e.what()));
-        }
-
-        try {
-            WriteSingleChannelUint8(params.object_based_shadow_path(), cast<u32>(output_OSM, 1u, 0u));
+            template_geotiff.values = output_OSM->cast<u8>();
+            template_geotiff.values.colwise().reverseInPlace();
+            template_geotiff.write(params.object_based_shadow_path());
         } catch (std::runtime_error const &e) {
             throw std::runtime_error(
                     fmt::format("Failed to write object-based shadow mask. Path: {}. Message: {}", params.cloud_path(),
@@ -242,10 +245,12 @@ namespace remote_sensing {
         }
 
         try {
-            WriteSingleChannelUint8(params.shadow_path(), cast<u32>(output_FSM, 1u, 0u));
+            template_geotiff.values = output_FSM->cast<u8>();
+            template_geotiff.values.colwise().reverseInPlace();
+            template_geotiff.write(params.shadow_path());
         } catch (std::runtime_error const &e) {
             throw std::runtime_error(
-                    fmt::format("Failed to write potential shadow mask. Path: {}. Message: {}", params.cloud_path(),
+                    fmt::format("Failed to write final shadow mask. Path: {}. Message: {}", params.cloud_path(),
                                 e.what()));
         }
     }
@@ -281,6 +286,12 @@ namespace remote_sensing {
         spdlog::debug("Starting calculation");
         spdlog::stopwatch sw;
         for (const auto &directory: directories) {
+            // Handle CTRL+C in our application
+            if (PyErr_CheckSignals() != 0) {
+                throw py::error_already_set();
+            }
+
+            spdlog::info("Calculating for {}", directory.filename());
             CloudParams params;
             params.nir_path = directory / fs::path("B08.tif");
             params.clp_path = directory / fs::path("CLP.tif");

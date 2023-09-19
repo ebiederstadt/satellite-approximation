@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 #include <givde/types.hpp>
+#include <gdal/gdal_priv.h>
 
 #include <cloud_shadow_detection/automatic_detection.h>
 #include <spatial_approximation/approx.h>
@@ -15,6 +16,8 @@ using namespace givde;
 PYBIND11_MODULE(_core, m)
 {
     m.doc() = "Data processing for sentinel satellite imagery";
+
+    GDALAllRegister();
 
     py::class_<std::filesystem::path>(m, "Path")
             .def(py::init<std::string>());
