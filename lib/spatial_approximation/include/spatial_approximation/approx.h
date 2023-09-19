@@ -22,12 +22,6 @@ namespace spatial_approximation {
         std::unordered_map<int, std::vector<index_t>> region_map;
     };
 
-    enum Status {
-        NoChange = 0,
-        Approximated = 1,
-        ApproximationFailed = 2
-    };
-
     /**
      * Find the portions of an image that are connected to each other
      * @param image: a binary image with true == pixel is invalid

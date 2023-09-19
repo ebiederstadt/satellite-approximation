@@ -15,6 +15,13 @@ namespace spatial_approximation {
     using sparse_t = Eigen::SparseMatrix<f64>;
     using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
 
+    bool on_border(Eigen::Index row, Eigen::Index col, MatX<f64> const &image) {
+        bool row_border = row == 0 || row == image.rows() - 1;
+        bool col_border = col == 0 || col == image.cols() - 1;
+
+        return row_border || col_border;
+    }
+
     void solve_matrix(MatX<f64> &input, MatX<bool> const &invalid_mask) {
         std::vector<index_t> invalid_pixels;
         for (Eigen::Index row = 0; row < invalid_mask.rows(); ++row) {
@@ -54,10 +61,10 @@ namespace spatial_approximation {
             b[i] = input(row, col);
         };
 
-        auto set_coefficient = [&](Eigen::Index row, Eigen::Index col, int x_offset, int y_offset, f64 v) {
+        auto set_coefficient = [&](Eigen::Index row, Eigen::Index col, int row_offset, int col_offset, f64 v) {
             auto i = index(row, col);
-            Eigen::Index row2 = row + x_offset;
-            Eigen::Index col2 = col + y_offset;
+            Eigen::Index row2 = row + row_offset;
+            Eigen::Index col2 = col + col_offset;
 
             f64 pixel = input(row2, col2);
             if (!invalid_mask(row2, col2)) {
@@ -85,7 +92,10 @@ namespace spatial_approximation {
 
         for (auto [row, col]: view::cartesian_product(
                 view::ints(min_row, max_row + 1), view::ints(min_col, max_col + 1))) {
-           if (invalid_mask(row, col)) {
+            // If we are on the border, we assume that the pixel is "known" (even though they may or may not actually be known)
+            if (on_border(row, col, input)) {
+                dirichlet_boundary_constraint_row(row, col);
+            } else if (invalid_mask(row, col)) {
                 laplacian_row(row, col);
             } else {
                 dirichlet_boundary_constraint_row(row, col);

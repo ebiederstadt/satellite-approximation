@@ -24,8 +24,9 @@ int main(int argc, char *argv[]) {
 
     MatX<bool> cloud_matrix(template_geotiff.height, template_geotiff.width);
     cloud_matrix.fill(false);
-    cloud_matrix.block<50, 50>(20, 20) = Eigen::Matrix<bool, 50, 50>::Ones();
-    template_geotiff.values.block<50, 50>(20, 20) = Eigen::Matrix<f64, 50, 50>::Constant(0.0);
+    // What happens if the unknown region is on the edge?
+    cloud_matrix.block<50, 50>(0, 0) = Eigen::Matrix<bool, 50, 50>::Ones();
+    template_geotiff.values.block<50, 50>(0, 0) = Eigen::Matrix<f64, 50, 50>::Constant(0.0);
 
     fs::path output_path = argv[2];
     fs::path test_path = output_path.parent_path() / fs::path("test.tif");
@@ -33,8 +34,5 @@ int main(int argc, char *argv[]) {
 
     spatial_approximation::fill_missing_portion_smooth_boundary(template_geotiff.values, cloud_matrix);
 
-    if (fs::exists(output_path)) {
-        fs::remove(output_path);
-    }
     template_geotiff.write(output_path);
 }
