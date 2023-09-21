@@ -19,6 +19,7 @@
 #include <cloud_shadow_detection/PotentialShadowMask.h>
 #include <cloud_shadow_detection/VectorGridOperations.h>
 #include <cloud_shadow_detection/CloudShadowMatching.h>
+#include <utils/filesystem.h>
 
 using namespace Imageio;
 using namespace ImageOperations;
@@ -255,30 +256,11 @@ namespace remote_sensing {
         }
     }
 
-    enum DirectoryContents {
-        NoSatelliteData,
-        MultiSpectral,
-        Radar
-    };
-
-    DirectoryContents find_directory_contents(fs::path const &path) {
-        boost::regex expr{R"(\d{4}-\d{2}-\d{2})"};
-        if (!boost::regex_match(path.filename().string(), expr)) {
-            return DirectoryContents::NoSatelliteData;
-        }
-        fs::path candidate_path = path / fs::path("B04.tif");
-        if (fs::exists(candidate_path)) {
-            return DirectoryContents::MultiSpectral;
-        } else {
-            return DirectoryContents::Radar;
-        }
-    }
-
     void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDetection skipShadowDetection,
                           bool use_cache) {
         std::vector<fs::path> directories;
         for (auto const &folder: fs::directory_iterator(folder_path)) {
-            if (fs::is_directory(folder) && find_directory_contents(folder) == DirectoryContents::MultiSpectral) {
+            if (fs::is_directory(folder) && utils::find_directory_contents(folder) == utils::DirectoryContents::MultiSpectral) {
                 directories.push_back(folder);
             }
         }

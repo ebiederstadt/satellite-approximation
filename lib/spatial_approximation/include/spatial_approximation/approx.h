@@ -1,8 +1,10 @@
 #pragma once
 
 #include <givde/types.hpp>
+#include <filesystem>
 
 using namespace givde;
+namespace fs = std::filesystem;
 
 namespace spatial_approximation {
     struct index_t {
@@ -35,4 +37,6 @@ namespace spatial_approximation {
      * @returns: A matrix representing approximation status for each region
      */
     void fill_missing_portion_smooth_boundary(MatX<f64> &input_image, MatX<bool> const &invalid_pixels);
+
+    void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold);
 }

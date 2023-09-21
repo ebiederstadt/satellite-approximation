@@ -128,7 +128,7 @@ namespace utils {
             }
 
             if (dataset->GetGeoTransform(geoTransform) != CE_None) {
-                throw std::runtime_error("Unable to load the geo transformation information");
+                throw std::runtime_error("Unable to load the geo transformation information (file: " + path + ")");
             }
 
             spdlog::debug("[GEOTIFF] Loaded geotiff: {}", path);

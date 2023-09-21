@@ -1,6 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(utils STATIC
+        source/filesystem.cpp
         source/geotiff.cpp)
 target_include_directories(utils PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 

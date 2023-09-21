@@ -1,11 +1,16 @@
 #include "spatial_approximation/approx.h"
+#include "utils/fmt_filesystem.h"
+#include "utils/geotiff.h"
+#include "utils/filesystem.h"
 
 #include <queue>
+#include <iostream>
+#include <execution>
 
 #include <range/v3/all.hpp>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 #include <Eigen/Sparse>
-#include <iostream>
 
 using namespace ranges;
 
@@ -124,9 +129,9 @@ namespace spatial_approximation {
                                        {0,  1}};
         // clang-format off
         return retVal
-           | views::transform([&index](index_t i) { return index_t{i.row + index.row, i.col + index.col}; })
-           | view::remove_if([&image](index_t i) { return !within_bounds(image, i); })
-           | to<std::vector>();
+               | views::transform([&index](index_t i) { return index_t{i.row + index.row, i.col + index.col}; })
+               | view::remove_if([&image](index_t i) { return !within_bounds(image, i); })
+               | to<std::vector>();
         // clang-format on
     }
 
@@ -188,6 +193,82 @@ namespace spatial_approximation {
                                                  input_image.size(), invalid_pixels.size()));
         }
 
+        spdlog::stopwatch sw;
         solve_matrix(input_image, invalid_pixels);
+        spdlog::debug("It took {} seconds to solve the problem", sw);
+    }
+
+    void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold) {
+        spdlog::debug("Processing directory: {}", base_folder);
+        if (!is_directory(base_folder)) {
+            spdlog::warn("Could not process: base folder is not a directory ({})", base_folder);
+            return;
+        }
+
+        std::vector<fs::path> folders_to_process;
+        for (auto const &path: fs::directory_iterator(base_folder)) {
+            if (utils::find_directory_contents(path) == utils::DirectoryContents::MultiSpectral) {
+                folders_to_process.push_back(path);
+            }
+        }
+
+        std::for_each(std::execution::par, folders_to_process.begin(), folders_to_process.end(), [&](auto &&folder) {
+            spdlog::debug("Starting folder: {}", folder);
+            fs::path output_dir = folder / fs::path("approximated_data");
+            if (!fs::exists(output_dir)) {
+                spdlog::info("Creating directory: {}", output_dir);
+                fs::create_directory(output_dir);
+            }
+
+            bool found_cloud_data = false;
+            bool found_shadow_data = false;
+            utils::GeoTIFF<u16> cloud_tiff;
+            utils::GeoTIFF<u16> shadow_tiff;
+            if (fs::exists(folder / fs::path("cloud_mask.tif"))) {
+                try {
+                    cloud_tiff = utils::GeoTIFF<u16>(folder / fs::path("cloud_mask.tif"));
+                    found_cloud_data = true;
+                } catch (std::runtime_error const &e) {
+                    spdlog::warn("Failed to open cloud file. Failed with error: {}", e.what());
+                }
+            }
+            if (fs::exists(folder / fs::path("shadow_mask.tif"))) {
+                try {
+                    shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
+                    found_shadow_data = true;
+                } catch (std::runtime_error const &e) {
+                    spdlog::warn("Failed to open shadow file. Failed with error: {}", e.what());
+                }
+            }
+            if (!(found_cloud_data || found_shadow_data)) {
+                spdlog::warn("Could not find mask data. Skipping dir: {}", folder);
+                return;
+            }
+
+            if (cloud_tiff.values.size() == 0 || shadow_tiff.values.size() == 0) {
+                if (cloud_tiff.values.size() == 0 && shadow_tiff.values.size() != 0) {
+                    cloud_tiff.values = MatX<u16>::Zero(shadow_tiff.values.rows(), shadow_tiff.values.cols());
+                } else if (cloud_tiff.values.size() != 0 && shadow_tiff.values.size() == 0) {
+                    shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
+                }
+            }
+            MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
+            f64 percent = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
+            if (percent >= skip_threshold) {
+                spdlog::debug("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, percent * 100.0);
+            }
+            for (auto const &band: band_names) {
+                fs::path output_path = output_dir / fs::path(fmt::format("{}.tif", band));
+                if (use_cache && fs::exists(output_path)) {
+                    continue;
+                }
+
+                fs::path input_path = folder / fs::path(fmt::format("{}.tif", band));
+                utils::GeoTIFF<f64> values(input_path);
+                fill_missing_portion_smooth_boundary(values.values, mask);
+                values.write(output_dir / fs::path(fmt::format("{}.tif", band)));
+            }
+            spdlog::debug("Finished folder: {}", folder);
+        });
     }
 }

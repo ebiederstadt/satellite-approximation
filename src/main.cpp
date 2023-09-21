@@ -13,8 +13,7 @@ namespace py = pybind11;
 using namespace py::literals;
 using namespace givde;
 
-PYBIND11_MODULE(_core, m)
-{
+PYBIND11_MODULE(_core, m) {
     m.doc() = "Data processing for sentinel satellite imagery";
 
     GDALAllRegister();
@@ -49,7 +48,8 @@ PYBIND11_MODULE(_core, m)
     py::class_<remote_sensing::SkipShadowDetection>(m, "SkipShadowDetection")
             .def(py::init<bool, double>())
             .def("__repr__", [](remote_sensing::SkipShadowDetection const &skipShadowDetection) {
-                return fmt::format("<SkipShadowDetection: {} (threshold: {})>", skipShadowDetection.decision, skipShadowDetection.threshold);
+                return fmt::format("<SkipShadowDetection: {} (threshold: {})>", skipShadowDetection.decision,
+                                   skipShadowDetection.threshold);
             });
 
     m.def("get_diagonal_distance", &remote_sensing::get_diagonal_distance,
@@ -59,7 +59,10 @@ PYBIND11_MODULE(_core, m)
     m.def("detect_in_folder", &remote_sensing::detect_in_folder,
           "folder_path"_a, "diagonal_distance"_a, "skipShadowDetection"_a, "use_cache"_a);
 
-    m.def("filling_missing_portions_smooth_boundaries", &spatial_approximation::fill_missing_portion_smooth_boundary,
+    m.def("filling_missing_portions_smooth_boundaries", [](MatX<f64> &input_image, MatX<bool> const &invalid_pixels) {
+            spatial_approximation::fill_missing_portion_smooth_boundary(input_image, invalid_pixels);
+            return input_image;
+        },
           "input_image"_a, "invalid_pixels"_a);
     py::class_<spatial_approximation::ConnectedComponents>(m, "ConnectedComponents")
             .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<spatial_approximation::index_t>>>());
