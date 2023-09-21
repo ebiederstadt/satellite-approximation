@@ -25,7 +25,8 @@ class Recipe(ConanFile):
             "opencl-headers/2023.04.17",
             "opencl-icd-loader/2023.04.17",
             "range-v3/0.12.0",
-            "doctest/2.4.11"
+            "doctest/2.4.11",
+            "zlib/1.3"
         ]
         for dependency in dependencies:
             self.requires(dependency)

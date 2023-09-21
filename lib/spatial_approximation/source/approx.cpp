@@ -45,7 +45,7 @@ namespace spatial_approximation {
         auto matrix_size = height * width;
 
         auto index = [&](Eigen::Index row, Eigen::Index col) {
-            return (col - min_col) + (row - min_row) * height;
+            return (col - min_col) + (row - min_row) * width;
         };
 
         Eigen::VectorXd b(matrix_size);
@@ -56,7 +56,7 @@ namespace spatial_approximation {
         auto dirichlet_boundary_constraint_row = [&](Eigen::Index row, Eigen::Index col) {
             // Results in a row with [... 0 0 1 0 0 ... ]
             // And the corresponding value in the b vector: [ ... 0 0 v 0 0 ...]^T
-            auto i = index(row, col);
+            auto i = index(row, col); // This is producing a value that is out of bounds... I wonder why?
             coefficients.push_back(Triplet<f64>(i, i, 1.0));
             b[i] = input(row, col);
         };
@@ -74,9 +74,6 @@ namespace spatial_approximation {
                 return;
             }
             auto j = index(row2, col2);
-            if (!(i < matrix_size && j < matrix_size) || !(i >= 0 && j >= 0)) {
-                throw std::runtime_error(fmt::format("Failed to compute, i or j too large ({} and {}, matrix_size={})", i, col, matrix_size));
-            }
             coefficients.push_back(Triplet<f64>(i, j, v));
         };
 
