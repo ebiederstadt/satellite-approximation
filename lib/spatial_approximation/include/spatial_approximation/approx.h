@@ -38,5 +38,10 @@ namespace spatial_approximation {
      */
     void fill_missing_portion_smooth_boundary(MatX<f64> &input_image, MatX<bool> const &invalid_pixels);
 
-    void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold);
+    struct Status {
+        f64 percent_clouds;
+        std::optional<f64> percent_shadows;
+        std::vector<std::pair<std::string, bool>> band_computation_status;
+    };
+    std::unordered_map<std::string, Status> fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold);
 }

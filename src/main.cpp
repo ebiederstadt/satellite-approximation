@@ -68,4 +68,11 @@ PYBIND11_MODULE(_core, m) {
             .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<spatial_approximation::index_t>>>());
 
     m.def("find_connected_components", &spatial_approximation::find_connected_components, "invalid_mask"_a);
+
+    py::class_<spatial_approximation::Status>(m, "Status")
+            .def_readonly("percent_clouds", &spatial_approximation::Status::percent_clouds)
+            .def_readonly("percent_shadows", &spatial_approximation::Status::percent_shadows)
+            .def_readonly("band_computation_status", &spatial_approximation::Status::band_computation_status);
+    m.def("fill_missing_data_folder", &spatial_approximation::fill_missing_data_folder,
+          "base_folder"_a, "band_names"_a, "use_cache"_a, "skip_threshold"_a);
 }

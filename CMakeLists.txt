@@ -58,4 +58,5 @@ find_package(doctest REQUIRED)
 add_executable(test_sentinel_data_processing tests/main.cpp)
 target_link_libraries(test_sentinel_data_processing PRIVATE
         spatial_approximation
-        doctest::doctest)
+        doctest::doctest
+        givdetypes::givdetypes)

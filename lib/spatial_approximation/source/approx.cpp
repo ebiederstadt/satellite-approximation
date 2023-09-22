@@ -198,12 +198,14 @@ namespace spatial_approximation {
         spdlog::debug("It took {} seconds to solve the problem", sw);
     }
 
-    void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold) {
+    std::unordered_map<std::string, Status> fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold) {
         spdlog::debug("Processing directory: {}", base_folder);
         if (!is_directory(base_folder)) {
             spdlog::warn("Could not process: base folder is not a directory ({})", base_folder);
-            return;
+            return {};
         }
+
+        std::unordered_map<std::string, Status> return_status;
 
         std::vector<fs::path> folders_to_process;
         for (auto const &path: fs::directory_iterator(base_folder)) {
@@ -212,7 +214,8 @@ namespace spatial_approximation {
             }
         }
 
-        std::for_each(std::execution::par, folders_to_process.begin(), folders_to_process.end(), [&](auto &&folder) {
+        std::mutex mutex;
+        std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(), [&](auto &&folder) {
             spdlog::debug("Starting folder: {}", folder);
             fs::path output_dir = folder / fs::path("approximated_data");
             if (!fs::exists(output_dir)) {
@@ -245,21 +248,27 @@ namespace spatial_approximation {
                 return;
             }
 
-            if (cloud_tiff.values.size() == 0 || shadow_tiff.values.size() == 0) {
-                if (cloud_tiff.values.size() == 0 && shadow_tiff.values.size() != 0) {
-                    cloud_tiff.values = MatX<u16>::Zero(shadow_tiff.values.rows(), shadow_tiff.values.cols());
-                } else if (cloud_tiff.values.size() != 0 && shadow_tiff.values.size() == 0) {
-                    shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
-                }
+            Status status;
+            status.band_computation_status = {};
+
+            if (shadow_tiff.values.size() == 0) {
+                shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
             }
             MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
-            f64 percent = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
-            if (percent >= skip_threshold) {
-                spdlog::debug("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, percent * 100.0);
+            status.percent_clouds = static_cast<f64>(cloud_tiff.values.cast<int>().sum() / static_cast<f64>(cloud_tiff.values.size()));
+            if (found_shadow_data) {
+                status.percent_shadows = static_cast<f64>(shadow_tiff.values.cast<int>().sum() / static_cast<f64>(shadow_tiff.values.size()));
+            }
+            f64 percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
+            spdlog::debug("Percent valid pixels: {:.2f}", (1.0 - percent_invalid) * 100.0);
+            if (percent_invalid >= skip_threshold) {
+                spdlog::info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, percent_invalid * 100.0);
+                return;
             }
             for (auto const &band: band_names) {
                 fs::path output_path = output_dir / fs::path(fmt::format("{}.tif", band));
                 if (use_cache && fs::exists(output_path)) {
+                    status.band_computation_status.emplace_back(band, true);
                     continue;
                 }
 
@@ -267,8 +276,15 @@ namespace spatial_approximation {
                 utils::GeoTIFF<f64> values(input_path);
                 fill_missing_portion_smooth_boundary(values.values, mask);
                 values.write(output_dir / fs::path(fmt::format("{}.tif", band)));
+                status.band_computation_status.emplace_back(band, true);
             }
+
+            std::lock_guard<std::mutex> lock(mutex);
+            return_status.insert({folder.filename().string(), status});
+
             spdlog::debug("Finished folder: {}", folder);
         });
+
+        return return_status;
     }
 }
