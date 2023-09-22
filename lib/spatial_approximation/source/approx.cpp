@@ -1,4 +1,5 @@
 #include "spatial_approximation/approx.h"
+#include "spatial_approximation/results.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
 #include "utils/filesystem.h"
@@ -198,14 +199,14 @@ namespace spatial_approximation {
         spdlog::debug("It took {} seconds to solve the problem", sw);
     }
 
-    std::unordered_map<std::string, Status> fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold) {
+    void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold) {
         spdlog::debug("Processing directory: {}", base_folder);
         if (!is_directory(base_folder)) {
             spdlog::warn("Could not process: base folder is not a directory ({})", base_folder);
-            return {};
+            return;
         }
 
-        std::unordered_map<std::string, Status> return_status;
+        std::unordered_map<std::string, Status> results;
 
         std::vector<fs::path> folders_to_process;
         for (auto const &path: fs::directory_iterator(base_folder)) {
@@ -223,14 +224,14 @@ namespace spatial_approximation {
                 fs::create_directory(output_dir);
             }
 
-            bool found_cloud_data = false;
-            bool found_shadow_data = false;
             utils::GeoTIFF<u16> cloud_tiff;
             utils::GeoTIFF<u16> shadow_tiff;
+
+            Status status;
             if (fs::exists(folder / fs::path("cloud_mask.tif"))) {
                 try {
                     cloud_tiff = utils::GeoTIFF<u16>(folder / fs::path("cloud_mask.tif"));
-                    found_cloud_data = true;
+                    status.clouds_computed = true;
                 } catch (std::runtime_error const &e) {
                     spdlog::warn("Failed to open cloud file. Failed with error: {}", e.what());
                 }
@@ -238,25 +239,22 @@ namespace spatial_approximation {
             if (fs::exists(folder / fs::path("shadow_mask.tif"))) {
                 try {
                     shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
-                    found_shadow_data = true;
+                    status.shadows_computed = true;
                 } catch (std::runtime_error const &e) {
                     spdlog::warn("Failed to open shadow file. Failed with error: {}", e.what());
                 }
             }
-            if (!(found_cloud_data || found_shadow_data)) {
+            if (!(status.clouds_computed || status.shadows_computed)) {
                 spdlog::warn("Could not find mask data. Skipping dir: {}", folder);
                 return;
             }
-
-            Status status;
-            status.band_computation_status = {};
 
             if (shadow_tiff.values.size() == 0) {
                 shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
             }
             MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
             status.percent_clouds = static_cast<f64>(cloud_tiff.values.cast<int>().sum() / static_cast<f64>(cloud_tiff.values.size()));
-            if (found_shadow_data) {
+            if (status.shadows_computed) {
                 status.percent_shadows = static_cast<f64>(shadow_tiff.values.cast<int>().sum() / static_cast<f64>(shadow_tiff.values.size()));
             }
             f64 percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
@@ -268,7 +266,7 @@ namespace spatial_approximation {
             for (auto const &band: band_names) {
                 fs::path output_path = output_dir / fs::path(fmt::format("{}.tif", band));
                 if (use_cache && fs::exists(output_path)) {
-                    status.band_computation_status.emplace_back(band, true);
+                    status.bands_computed.push_back(band);
                     continue;
                 }
 
@@ -276,15 +274,15 @@ namespace spatial_approximation {
                 utils::GeoTIFF<f64> values(input_path);
                 fill_missing_portion_smooth_boundary(values.values, mask);
                 values.write(output_dir / fs::path(fmt::format("{}.tif", band)));
-                status.band_computation_status.emplace_back(band, true);
+                status.bands_computed.push_back(band);
             }
 
             std::lock_guard<std::mutex> lock(mutex);
-            return_status.insert({folder.filename().string(), status});
+            results.insert({folder.filename().string(), status});
 
             spdlog::debug("Finished folder: {}", folder);
         });
 
-        return return_status;
+        spatial_approximation::write_results_to_db(base_folder, results);
     }
 }

@@ -1,6 +1,4 @@
 #include <spatial_approximation/approx.h>
-#include <utils/geotiff.h>
-#include <utils/fmt_filesystem.h>
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <gdal/gdal_priv.h>

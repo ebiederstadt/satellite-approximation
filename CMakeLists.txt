@@ -25,6 +25,7 @@ find_package(OpenCLHeaders REQUIRED)
 find_package(OpenCLICDLoader REQUIRED)
 find_package(range-v3 REQUIRED)
 find_package(GDAL REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 add_subdirectory(lib/cloud_shadow_detection)
 add_subdirectory(lib/spatial_approximation)
