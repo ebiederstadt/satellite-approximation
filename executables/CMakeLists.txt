@@ -21,3 +21,9 @@ add_executable(main_spatial_approximation main-spatial-approximation.cpp)
 target_link_libraries(main_spatial_approximation
         ${libraries}
         spatial_approximation)
+
+add_executable(main_analysis main-analysis.cpp)
+target_link_libraries(main_analysis
+        givdetypes::givdetypes
+        analysis
+        spdlog::spdlog)

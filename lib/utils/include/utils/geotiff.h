@@ -101,16 +101,9 @@ namespace utils {
             lngLatCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
             dataSetCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
             GDALRasterBand* band = dataset->GetRasterBand(bandIndex);
-            spdlog::debug(
-                    "[GEOTIFF] CRS.Name: {}, RasterCount: {}",
-                    dataSetCRS.GetName(),
-                    dataset->GetRasterCount());
 
             width = dataset->GetRasterXSize();
             height = dataset->GetRasterYSize();
-
-            spdlog::debug(
-                    "[GEOTIFF] width: {}, height: {}", width, height);
 
             values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
             GDALTypeForOurType<ScalarT> type;
@@ -130,15 +123,6 @@ namespace utils {
             if (dataset->GetGeoTransform(geoTransform) != CE_None) {
                 throw std::runtime_error("Unable to load the geo transformation information (file: " + path + ")");
             }
-
-            spdlog::debug("[GEOTIFF] Loaded geotiff: {}", path);
-            spdlog::debug("[GEOTIFF] Image Size: {}x{}", width, height);
-            spdlog::debug("[GEOTIFF] Origin = ({:0.6f}, {:0.6f})", geoTransform[0], geoTransform[3]);
-            spdlog::debug("[GEOTIFF] Pixel Size = ({:0.6f}, {:0.6f})", geoTransform[1], geoTransform[5]);
-            spdlog::debug("[GEOTIFF] Rotation (row,col) = ({:0.6f}, {:0.6f})", geoTransform[2], geoTransform[4]);
-
-            spdlog::debug("[GEOTIFF] Original NorthWest = ({:0.6f}, {:0.6f})", northWest().x().number(), northWest().y().number());
-            spdlog::debug("[GEOTIFF] Original SouthEast= ({:0.6f}, {:0.6f})", southEast().x().number(), southEast().y().number());
 
             // Grab their current bounding coordinates
             // (in their coordinate reference system)
@@ -164,10 +148,6 @@ namespace utils {
             se = convertToLatLng(se);
             geoTransform[1] = (se.y() - nw.y()).number() / static_cast<f64>(width);  // lng
             geoTransform[5] = (se.x() - nw.x()).number() / static_cast<f64>(height); // lat
-
-            spdlog::debug("[GEOTIFF] Our NorthWest = (Lat: {:0.6f}, Lng: {:0.6f})", northWest().x().number(), northWest().y().number());
-            spdlog::debug("[GEOTIFF] Our SouthEast= (Lat: {:0.6f}, Lng: {:0.6f})", southEast().x().number(), southEast().y().number());
-            spdlog::debug("[GEOTIFF] Our Pixel Size = ({:0.6f}, {:0.6f})", geoTransform[5], geoTransform[1]);
         }
 
         // Default constructor for the GeoTIFF.
