@@ -197,7 +197,11 @@ void single_image_summary(
                         utils::GeoTIFF<f64> index_tiff = compute_index(folder, index);
                         // Initially we assume that all pixels are valid
                         MatX<bool> valid_pixels = MatX<bool>::Ones(width, height);
-                        auto status = db.get_status(folder.filename().string());
+                        CloudShadowStatus status;
+                        {
+                            std::lock_guard<std::mutex> lock(mutex);
+                            status = db.get_status(folder.filename().string());
+                        }
                         if (choice.exclude_cloudy_pixels && status.clouds_exist) {
                             fs::path cloud_path = folder / fs::path("cloud_mask.tif");
                             utils::GeoTIFF<u8> cloud_tiff(cloud_path);
@@ -240,7 +244,7 @@ void single_image_summary(
         MatX<f64> percent = (result.histogram_matrix.array() / result.count_matrix.cast<f64>().array());
         example_tiff.values = percent;
         int id = db.save_result_in_table(index, threshold, year, year, choices);
-        example_tiff.write(cache_string(id));
+        example_tiff.write(base_path / fs::path(cache_string(id)));
     }
     if (overall_result.result_if_exists.has_value())
         return;
@@ -248,6 +252,6 @@ void single_image_summary(
     MatX<f64> percent = (overall_result.histogram_matrix.array() / overall_result.count_matrix.cast<f64>().array());
     example_tiff.values = percent;
     int id = db.save_result_in_table(index, threshold, start_year, end_year, choices);
-    example_tiff.write(cache_string(id));
+    example_tiff.write(base_path / fs::path(cache_string(id)));
 }
 }

@@ -5,13 +5,15 @@
 #include <sqlite3.h>
 #include <variant>
 
+#include "noCopying.h"
+
 namespace fs = std::filesystem;
 using namespace givde;
 
 namespace analysis {
 struct CloudShadowStatus {
-    bool clouds_exist;
-    bool shadows_exist;
+    bool clouds_exist = false;
+    bool shadows_exist = false;
 };
 
 enum class Indices;
@@ -20,12 +22,12 @@ struct UseRealData;
 using DataChoices = std::variant<UseApproximatedData, UseRealData>;
 
 class DataBase {
+    MAKE_NONCOPYABLE(DataBase);
 public:
     DataBase(fs::path const& base_path);
-
     ~DataBase();
 
-    CloudShadowStatus get_status(std::string_view date);
+    CloudShadowStatus get_status(std::string date);
 
     std::optional<int> result_exists(
         Indices index,
@@ -46,9 +48,8 @@ private:
     sqlite3_stmt* stmt;
 
     void create_sis_table();
-    void prepare_stmt(
-        sqlite3_stmt* stmt_to_prepare,
-        std::string_view sql_string,
+    sqlite3_stmt* prepare_stmt(
+        std::string sql_string,
         Indices index,
         f64 threshold,
         int start_year,

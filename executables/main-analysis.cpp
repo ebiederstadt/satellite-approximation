@@ -1,18 +1,19 @@
 #include <analysis/sis.h>
 #include <filesystem>
 #include <gdal/gdal_priv.h>
-#include <givde/types.hpp>
 #include <spdlog/spdlog.h>
+#include <sqlite3.h>
 
 namespace fs = std::filesystem;
 using namespace givde;
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
     if (argc != 6) {
         spdlog::error("Usage: {} base_path start_year end_year index threshold", argv[0]);
         return -1;
     }
+
+    sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 
     fs::path base_folder(argv[1]);
     int start_year = std::stoi(argv[2]);
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
     }
     auto index = index_or_none.value();
     f64 threshold = std::stod(argv[5]);
-    analysis::DataChoices data_choices = analysis::UseRealData {};
+    analysis::DataChoices data_choices = analysis::UseRealData{};
 
     spdlog::set_level(spdlog::level::debug);
     GDALAllRegister();
