@@ -29,6 +29,8 @@ public:
 
     CloudShadowStatus get_status(std::string date);
 
+    std::vector<std::string> get_approximated_data(std::string date);
+
     std::optional<int> result_exists(
         Indices index,
         f64 threshold,

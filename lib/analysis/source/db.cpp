@@ -27,6 +27,26 @@ DataBase::~DataBase()
     sqlite3_close(db);
 }
 
+std::vector<std::string> DataBase::get_approximated_data(std::string date)
+{
+    std::string sql_select = R"sql(
+SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
+)sql";
+    sqlite3_stmt* stmt_select;
+    int rc = sqlite3_prepare_v2(db, sql_select.c_str(), (int)sql_select.length(), &stmt_select, nullptr);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("Failed to compile SQL. Error: " + std::string(sqlite3_errmsg(db)));
+    }
+    sqlite3_bind_text(stmt_select, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
+
+    std::vector<std::string> bands;
+    while (sqlite3_step(stmt_select) == SQLITE_ROW) {
+        bands.push_back(reinterpret_cast<const char*>(sqlite3_column_int(stmt_select, 0)));
+    }
+
+    return bands;
+}
+
 CloudShadowStatus DataBase::get_status(std::string date)
 {
     sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
@@ -119,7 +139,7 @@ WHERE index_name=? AND threshold=? AND start_year=? AND end_year=? AND use_appro
     if (rc == SQLITE_ROW) {
         return_value = sqlite3_column_int(stmt_select, 0);
     } else if (rc != SQLITE_ERROR) {
-        spdlog::error("Failed to insert into db. rc={}", rc);
+        return {};
     }
 
     sqlite3_finalize(stmt_select);

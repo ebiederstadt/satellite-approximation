@@ -92,9 +92,34 @@ struct ResultContainer {
     std::optional<int> result_if_exists;
 };
 
-std::string cache_string(int id)
+std::string cache_string(int id, bool use_raw_data)
 {
-    return fmt::format("sis_{}.tif", id);
+    return fmt::format("sis_{}{}.tif", id, use_raw_data ? "_raw" : "");
+}
+
+std::vector<std::string> required_files(Indices index)
+{
+    switch (index) {
+    case Indices::NDVI:
+        return { "B08", "B04" };
+    case Indices::NDMI:
+        return { "B08", "B11" };
+    case Indices::mNDWI:
+        return { "B03", "B11" };
+    case Indices::SWI:
+        return { "B03", "B08", "B11" };
+    }
+}
+
+// Check to see if we are missing any of the required files for computation
+bool missing_files(std::vector<std::string> const& files, Indices index)
+{
+    auto necessary_files = required_files(index);
+    bool files_missing = false;
+    for (auto const& file : necessary_files) {
+        files_missing |= !contains(files, file);
+    }
+    return files_missing;
 }
 
 void single_image_summary(
@@ -143,30 +168,34 @@ void single_image_summary(
 
     auto index_name = fmt::format("{}.tif", magic_enum::enum_name(index));
 
+    std::mutex mutex;
     // Compute indices in a parallel-loop (which I hope will be nice and fast :)
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             fs::path index_path;
             // Provide the option to skip the computation if we don't have any data
-            bool skip_computation = false;
+            std::vector<std::string> approx_data;
             std::visit(
                 Visitor {
                     [&](UseApproximatedData const&) {
                         index_path = folder / fs::path("approximated_data");
-                        if (fs::is_empty(index_path)) {
-                            skip_computation = true;
-                        }
+                        std::lock_guard<std::mutex> lock(mutex);
+                        approx_data = db.get_approximated_data(folder.filename().string());
                     },
-                    [&](auto) { index_path = folder; } },
+                    [&](auto) {
+                        index_path = folder;
+                        approx_data = required_files(index);
+                    } },
                 choices);
 
-            if (skip_computation || fs::exists(index_path / fs::path(index_name)))
+            // Don't bother to compute if we are missing files, or if the index already exists
+            if (missing_files(approx_data, index) || fs::exists(index_path / index_name))
                 return;
             else
                 compute_index(index_path, index);
         });
 
-    std::mutex mutex;
+    int num_dates_used_for_analysis = 0;
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             auto date = date_time::from_simple_string(folder.filename());
@@ -176,24 +205,44 @@ void single_image_summary(
             std::visit(
                 Visitor {
                     [&](UseApproximatedData) {
-                        // This assumes that we have data for the folder. Need to confirm this!
+                        // Skip if we don't have any approximated data for the current site
+                        if (!fs::exists(folder / "approximated_data" / index_name)) {
+                            return;
+                        }
+                        bool yearly_data_exists = yearly_data.at(
+                                                                 date_time::from_simple_string(folder.filename()).year())
+                                                      .result_if_exists.has_value();
+                        bool overall_data_exists = overall_result.result_if_exists.has_value();
+                        if (yearly_data_exists && overall_data_exists) {
+                            return;
+                        }
+
                         utils::GeoTIFF<f64> index_tiff = compute_index(
                             folder / fs::path("approximated_data"), index);
 
                         std::lock_guard<std::mutex> lock(mutex);
                         auto& data_for_year = yearly_data.at(
                             date_time::from_simple_string(folder.filename()).year());
-                        if (!data_for_year.result_if_exists.has_value()) {
+                        if (!yearly_data_exists) {
                             // For now with the approximated data we use every pixel
                             data_for_year.count_matrix = data_for_year.count_matrix + MatX<i32>::Ones(width, height);
                             data_for_year.histogram_matrix = (data_for_year.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
                         }
-                        if (!overall_result.result_if_exists.has_value()) {
+                        if (!overall_data_exists) {
                             overall_result.count_matrix = overall_result.count_matrix + MatX<i32>::Ones(width, height);
                             overall_result.histogram_matrix = (overall_result.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
                         }
+                        num_dates_used_for_analysis += 1;
                     },
                     [&](UseRealData const& choice) {
+                        bool yearly_data_exists = yearly_data.at(
+                                                                 date_time::from_simple_string(folder.filename()).year())
+                                                      .result_if_exists.has_value();
+                        auto overall_data_exists = overall_result.result_if_exists.has_value();
+                        if (yearly_data_exists && overall_data_exists) {
+                            return;
+                        }
+
                         utils::GeoTIFF<f64> index_tiff = compute_index(folder, index);
                         // Initially we assume that all pixels are valid
                         MatX<bool> valid_pixels = MatX<bool>::Ones(width, height);
@@ -224,17 +273,20 @@ void single_image_summary(
                         std::lock_guard<std::mutex> lock(mutex);
                         auto& data_for_year = yearly_data.at(
                             date_time::from_simple_string(folder.filename()).year());
-                        if (!data_for_year.result_if_exists.has_value()) {
+                        if (!yearly_data_exists) {
                             data_for_year.count_matrix = data_for_year.count_matrix + valid_pixels.cast<i32>();
                             data_for_year.histogram_matrix = (data_for_year.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
                         }
-                        if (overall_result.result_if_exists.has_value()) {
+                        if (!overall_data_exists) {
                             overall_result.count_matrix = overall_result.count_matrix + valid_pixels.cast<i32>();
                             overall_result.histogram_matrix = (overall_result.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
                         }
+                        num_dates_used_for_analysis += 1;
                     } },
                 choices);
         });
+
+    spdlog::info("{} days used for analysis", num_dates_used_for_analysis);
 
     // Save the results to disk
     for (auto const& [year, result] : yearly_data) {
@@ -244,7 +296,10 @@ void single_image_summary(
         MatX<f64> percent = (result.histogram_matrix.array() / result.count_matrix.cast<f64>().array());
         example_tiff.values = percent;
         int id = db.save_result_in_table(index, threshold, year, year, choices);
-        example_tiff.write(base_path / fs::path(cache_string(id)));
+        example_tiff.write(base_path / fs::path(cache_string(id, false)));
+
+        example_tiff.values = result.histogram_matrix;
+        example_tiff.write(base_path / cache_string(id, true));
     }
     if (overall_result.result_if_exists.has_value())
         return;
@@ -252,6 +307,9 @@ void single_image_summary(
     MatX<f64> percent = (overall_result.histogram_matrix.array() / overall_result.count_matrix.cast<f64>().array());
     example_tiff.values = percent;
     int id = db.save_result_in_table(index, threshold, start_year, end_year, choices);
-    example_tiff.write(base_path / fs::path(cache_string(id)));
+    example_tiff.write(base_path / fs::path(cache_string(id, false)));
+
+    example_tiff.values = overall_result.histogram_matrix;
+    example_tiff.write(base_path / cache_string(id, true));
 }
 }
