@@ -265,10 +265,12 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         if (status.shadows_computed) {
             status.percent_shadows = static_cast<f64>(shadow_tiff.values.cast<int>().sum() / static_cast<f64>(shadow_tiff.values.size()));
         }
-        f64 percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
-        spdlog::debug("Percent valid pixels: {:.2f}", (1.0 - percent_invalid) * 100.0);
-        if (percent_invalid >= skip_threshold) {
-            spdlog::info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, percent_invalid * 100.0);
+        status.percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
+        if (status.percent_invalid >= skip_threshold) {
+            spdlog::info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+            // Even though we are skipping spatial approximation, we still want to record stats about this date
+            std::lock_guard<std::mutex> lock(mutex);
+            results.insert({ folder.filename().string(), status });
             return;
         }
         for (auto const& band : band_names) {

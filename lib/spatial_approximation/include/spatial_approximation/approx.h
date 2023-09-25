@@ -42,6 +42,7 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
 struct Status {
     f64 percent_clouds = 0.0;
     std::optional<f64> percent_shadows;
+    f64 percent_invalid = 0.0;
     bool clouds_computed = false;
     bool shadows_computed = false;
     std::vector<std::string> bands_computed;

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS dates(
     clouds_computed INTEGER,
     shadows_computed INTEGER,
     percent_cloudy REAL,
-    percent_shadows REAL);
+    percent_shadows REAL,
+    percent_invalid REAL);
 )sql";
     rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err_msg);
     if (rc != SQLITE_OK)
@@ -50,8 +51,8 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     for (auto const& [date, status] : results) {
         // Insert the basic data
         sql = R"sql(
-INSERT INTO dates (date, clouds_computed, shadows_computed, percent_cloudy, percent_shadows)
-VALUES(?, ?, ?, ?, ?)
+INSERT INTO dates (date, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
+VALUES(?, ?, ?, ?, ?, ?)
 )sql";
         sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
         sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
@@ -62,6 +63,7 @@ VALUES(?, ?, ?, ?, ?)
             sqlite3_bind_double(stmt, 5, *status.percent_shadows);
         else
             sqlite3_bind_null(stmt, 5);
+        sqlite3_bind_double(stmt, 6, status.percent_invalid);
         rc = sqlite3_step(stmt);
         if (rc != SQLITE_DONE) {
             spdlog::error("First INSERT failed: {}", sqlite3_errmsg(db));
@@ -69,14 +71,6 @@ VALUES(?, ?, ?, ?, ?)
         }
         sqlite3_finalize(stmt);
 
-        sql = "DELETE FROM approximated_data WHERE date_id = '?'";
-        sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
-        sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
-        rc = sqlite3_step(stmt);
-        if (rc != SQLITE_DONE) {
-            spdlog::error("Failed to delete date with error: {}", sqlite3_errmsg(db));
-            goto fail;
-        }
         for (auto const& band : status.bands_computed) {
             sql = R"sql(
 INSERT INTO approximated_data (band_name, spatial, temporal, date_id)
