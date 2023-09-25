@@ -14,8 +14,11 @@ DataBase::DataBase(fs::path const& base_path)
     if (rc != SQLITE_OK) {
         throw std::runtime_error(fmt::format("Failed to open database. Looking for file: {}", db_path.string()));
     }
-    sql = "SELECT (clouds_computed, shadows_computed) FROM dates WHERE date='?';";
-    sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
+    sql = "SELECT clouds_computed, shadows_computed FROM dates WHERE date='?';";
+    rc = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("Failed to compile SQL. Error: " + std::string(sqlite3_errmsg(db)));
+    }
 }
 
 DataBase::~DataBase()
@@ -29,7 +32,7 @@ CloudShadowStatus DataBase::get_status(std::string_view date)
     sqlite3_bind_text(stmt, 1, date.data(), (int)date.length(), SQLITE_STATIC);
     int rc = sqlite3_step(stmt);
     if (rc != SQLITE_ROW) {
-        spdlog::error("Failed to find date of interest: ", date);
+        spdlog::error("Failed to find date of interest: {}", date);
         return {};
     }
     auto cloud_status = (bool)sqlite3_column_int(stmt, 0);
@@ -73,7 +76,7 @@ void DataBase::create_sis_table()
 {
     std::string sql_create = R"sql(
 CREATE TABLE IF NOT EXISTS single_image_summary(
-    id INTEGER PRIMARY_KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     index_name TEXT,
     threshold REAL,
     start_year INTEGER,
