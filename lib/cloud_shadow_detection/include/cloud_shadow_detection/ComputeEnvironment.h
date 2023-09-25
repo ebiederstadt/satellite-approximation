@@ -11,4 +11,4 @@ extern boost::compute::command_queue CommandQueue;
 void InitMainContext();
 
 std::string PlatformAndDeviceInfo();
-}  // namespace ComputeEnvironment
+} // namespace ComputeEnvironment

@@ -21,6 +21,5 @@ MatchCloudsShadowsResults MatchCloudsShadows(
     std::shared_ptr<ImageBool> potentialShadow,
     float DiagonalLength,
     glm::vec3 sunPos,
-    glm::vec3 viewPos
-);
-}  // namespace CloudShadowMatching
+    glm::vec3 viewPos);
+} // namespace CloudShadowMatching

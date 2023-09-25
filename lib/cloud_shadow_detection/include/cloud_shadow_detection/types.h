@@ -3,17 +3,17 @@
 #include <filesystem>
 #include <map>
 
-#include <Eigen/Core>
 #include "glm/glm.hpp"
+#include <Eigen/Core>
 
 using Path = ::std::filesystem::path;
 
 template<typename T>
-using Image      = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using Image = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using ImageFloat = Image<float>;
-using ImageBool  = Image<bool>;
-using ImageInt   = Image<int>;
-using ImageUint  = Image<unsigned int>;
+using ImageBool = Image<bool>;
+using ImageInt = Image<int>;
+using ImageUint = Image<unsigned int>;
 using VectorGrid = Image<glm::vec3>;
 struct ImageBounds {
     glm::uvec2 p0;
@@ -42,14 +42,14 @@ struct PixelsQuad {
     Quad quad;
 };
 
-using Cloud      = Pixels;
-using Clouds     = std::map<int, Cloud>;
-using CloudQuad  = PixelsQuad;
+using Cloud = Pixels;
+using Clouds = std::map<int, Cloud>;
+using CloudQuad = PixelsQuad;
 using CloudQuads = std::map<int, CloudQuad>;
 
-using Shadow      = Pixels;
-using Shadows     = std::map<int, Shadow>;
-using ShadowQuad  = PixelsQuad;
+using Shadow = Pixels;
+using Shadows = std::map<int, Shadow>;
+using ShadowQuad = PixelsQuad;
 using ShadowQuads = std::map<int, ShadowQuad>;
 
 struct Line {

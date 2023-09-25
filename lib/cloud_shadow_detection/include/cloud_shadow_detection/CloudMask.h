@@ -9,8 +9,7 @@ struct GenerateCloudMaskReturn {
 GenerateCloudMaskReturn GenerateCloudMask(
     std::shared_ptr<ImageFloat> CLP,
     std::shared_ptr<ImageFloat> CLD,
-    std::shared_ptr<ImageUint> SCL
-);
+    std::shared_ptr<ImageUint> SCL);
 struct PartitionCloudMaskReturn {
     CloudQuads clouds;
     std::shared_ptr<ImageInt> map;
@@ -18,6 +17,5 @@ struct PartitionCloudMaskReturn {
 PartitionCloudMaskReturn PartitionCloudMask(
     std::shared_ptr<ImageBool> CloudMaskData,
     float DiagonalLength,
-    unsigned int min_cloud_area
-);
-}  // namespace CloudMask
+    unsigned int min_cloud_area);
+} // namespace CloudMask

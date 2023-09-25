@@ -14,10 +14,12 @@ std::shared_ptr<ImageFloat> BetaMap(
     std::shared_ptr<ImageBool> cloudMask,
     std::shared_ptr<ImageBool> shadowMask,
     std::shared_ptr<ImageFloat> CLP,
-    float DiagonalLength
-);
+    float DiagonalLength);
 
-enum class Bounds { ALPHA_MIN, ALPHA_MAX, BETA_MIN, BETA_MAX };
+enum class Bounds { ALPHA_MIN,
+    ALPHA_MAX,
+    BETA_MIN,
+    BETA_MAX };
 
 struct SurfaceRenderGeom {
     std::vector<glm::vec3> verts;
@@ -37,7 +39,7 @@ struct UniformProbabilitySurface {
     glm::uvec2 resolution();
     SurfaceRenderGeom MeshData(int i_min, int i_max, int j_min, int j_max);
 
-  private:
+private:
     std::shared_ptr<ImageFloat> m_data;
     std::optional<float> m_alpha_min_clamp;
     std::optional<float> m_alpha_max_clamp;
@@ -49,14 +51,12 @@ UniformProbabilitySurface testMap();
 UniformProbabilitySurface ProbabilityMap(
     std::shared_ptr<ImageBool> shadowMask,
     std::shared_ptr<ImageFloat> alphaMap,
-    std::shared_ptr<ImageFloat> betaMap
-);
+    std::shared_ptr<ImageFloat> betaMap);
 std::shared_ptr<ImageBool> ImprovedShadowMask(
     std::shared_ptr<ImageBool> shadowMask,
     std::shared_ptr<ImageBool> cloudMask,
     std::shared_ptr<ImageFloat> alphaMap,
     std::shared_ptr<ImageFloat> betaMap,
     UniformProbabilitySurface probabilitySurface,
-    float threshold
-);
-}  // namespace ProbabilityRefinement
+    float threshold);
+} // namespace ProbabilityRefinement

@@ -1,14 +1,17 @@
 #include "cloud_shadow_detection/Imageio.h"
 
 #include "cloud_shadow_detection/ImageOperations.h"
-#include <spdlog/spdlog.h>
 #include "tiffio.h"
+#include <spdlog/spdlog.h>
 
-std::shared_ptr<ImageFloat> Imageio::ReadSingleChannelFloat(const Path path) {
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+std::shared_ptr<ImageFloat> Imageio::ReadSingleChannelFloat(const Path path)
+{
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageFloat> ret;
-    TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cant open file");
+    TIFF* tif = TIFFOpen(path.string().c_str(), "r");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         std::vector<float> retVal;
         uint32_t width, height;
@@ -22,19 +25,21 @@ std::shared_ptr<ImageFloat> Imageio::ReadSingleChannelFloat(const Path path) {
                 throw std::runtime_error("Falure when reading file");
             }
         ret = std::make_shared<ImageFloat>(
-                Eigen::Map<ImageFloat>(reinterpret_cast<float *>(retVal.data()), height, width)
-                        .cast<float>()
-        );
+            Eigen::Map<ImageFloat>(reinterpret_cast<float*>(retVal.data()), height, width)
+                .cast<float>());
         TIFFClose(tif);
     }
     return std::make_shared<ImageFloat>(ret->colwise().reverse());
 }
 
-std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint8(const Path path) {
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint8(const Path path)
+{
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageUint> ret;
-    TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cannot open file");
+    TIFF* tif = TIFFOpen(path.string().c_str(), "r");
+    if (!tif)
+        throw std::runtime_error("Cannot open file");
     else {
         std::vector<uint8_t> retVal;
         uint32_t width, height;
@@ -49,20 +54,22 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint8(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                        .cast<unsigned int>()
-        );
+            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int*>(tmp.data()), height, width)
+                .cast<unsigned int>());
 
         TIFFClose(tif);
     }
     return std::make_shared<ImageUint>(ret->colwise().reverse());
 }
 
-std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint16(const Path path) {
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint16(const Path path)
+{
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageUint> ret;
-    TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cant open file");
+    TIFF* tif = TIFFOpen(path.string().c_str(), "r");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         std::vector<uint16_t> retVal;
         uint32_t width, height;
@@ -77,20 +84,22 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint16(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                        .cast<unsigned int>()
-        );
+            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int*>(tmp.data()), height, width)
+                .cast<unsigned int>());
 
         TIFFClose(tif);
     }
     return std::make_shared<ImageUint>(ret->colwise().reverse());
 }
 
-std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint32(const Path path) {
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint32(const Path path)
+{
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageUint> ret;
-    TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cant open file");
+    TIFF* tif = TIFFOpen(path.string().c_str(), "r");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         std::vector<uint32_t> retVal;
         uint32_t width, height;
@@ -105,19 +114,21 @@ std::shared_ptr<ImageUint> Imageio::ReadSingleChannelUint32(const Path path) {
             }
         std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
         ret = std::make_shared<ImageUint>(
-                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                        .cast<unsigned int>()
-        );
+            Eigen::Map<ImageUint>(reinterpret_cast<unsigned int*>(tmp.data()), height, width)
+                .cast<unsigned int>());
         TIFFClose(tif);
     }
     return std::make_shared<ImageUint>(ret->colwise().reverse());
 }
 
-std::shared_ptr<ImageUint> Imageio::ReadRGBA(const Path path) {
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
+std::shared_ptr<ImageUint> Imageio::ReadRGBA(const Path path)
+{
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
     std::shared_ptr<ImageUint> ret;
-    TIFF *tif = TIFFOpen(path.string().c_str(), "r");
-    if (!tif) throw std::runtime_error("Cant open file");
+    TIFF* tif = TIFFOpen(path.string().c_str(), "r");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         std::vector<uint32_t> retVal;
         uint32_t width, height;
@@ -130,28 +141,30 @@ std::shared_ptr<ImageUint> Imageio::ReadRGBA(const Path path) {
         } else {
             std::vector<unsigned int> tmp(retVal.begin(), retVal.end());
             ret = std::make_shared<ImageUint>(
-                    Eigen::Map<ImageUint>(reinterpret_cast<unsigned int *>(tmp.data()), height, width)
-                            .cast<unsigned int>()
-            );
+                Eigen::Map<ImageUint>(reinterpret_cast<unsigned int*>(tmp.data()), height, width)
+                    .cast<unsigned int>());
         }
         TIFFClose(tif);
     }
     return ret;
 }
 
-void quietHandler(const char *
+void quietHandler(char const*
 
-module,
-const char *fmt, va_list
-args) {
-return; }
+                      module,
+    char const* fmt, va_list args)
+{
+    return;
+}
 
-void Imageio::SupressLibTIFF() {
+void Imageio::SupressLibTIFF()
+{
     TIFFSetErrorHandler(quietHandler);
     TIFFSetWarningHandler(quietHandler);
 }
 
-static void createParentDirectory(std::filesystem::path const &path) {
+static void createParentDirectory(std::filesystem::path const& path)
+{
     auto parentPath = path.parent_path();
     if (std::filesystem::is_directory(parentPath) && !std::filesystem::exists(parentPath)) {
         spdlog::info("Creating directory: {}", parentPath.string());
@@ -159,16 +172,20 @@ static void createParentDirectory(std::filesystem::path const &path) {
     }
 }
 
-void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloat> image) {
+void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloat> image)
+{
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extension must be tif");
-    if (std::filesystem::exists(path)) std::filesystem::remove(path);
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Cant open file");
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extension must be tif");
+    if (std::filesystem::exists(path))
+        std::filesystem::remove(path);
+    TIFF* tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         image = std::make_shared<ImageFloat>(image->colwise().reverse());
         std::vector<float> imageData
-                = std::vector<float>(image->data(), image->data() + image->size());
+            = std::vector<float>(image->data(), image->data() + image->size());
 
         // Set values to use
         uint32_t width = image->cols();
@@ -206,16 +223,20 @@ void Imageio::WriteSingleChannelFloat(const Path path, std::shared_ptr<ImageFloa
     }
 }
 
-void Imageio::WriteSingleChannelUint8(const Path path, std::shared_ptr<ImageUint> image) {
+void Imageio::WriteSingleChannelUint8(const Path path, std::shared_ptr<ImageUint> image)
+{
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extension must be tif");
-    if (std::filesystem::exists(path)) std::filesystem::remove(path);
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Cant open file");
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extension must be tif");
+    if (std::filesystem::exists(path))
+        std::filesystem::remove(path);
+    TIFF* tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint8_t> imageData
-                = std::vector<uint8_t>(image->data(), image->data() + image->size());
+            = std::vector<uint8_t>(image->data(), image->data() + image->size());
 
         // Set values to use
         uint32_t width = image->cols();
@@ -253,16 +274,20 @@ void Imageio::WriteSingleChannelUint8(const Path path, std::shared_ptr<ImageUint
     }
 }
 
-void Imageio::WriteSingleChannelUint16(const Path path, std::shared_ptr<ImageUint> image) {
+void Imageio::WriteSingleChannelUint16(const Path path, std::shared_ptr<ImageUint> image)
+{
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
-    if (std::filesystem::exists(path)) std::filesystem::remove(path);
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Cant open file");
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
+    if (std::filesystem::exists(path))
+        std::filesystem::remove(path);
+    TIFF* tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint16_t> imageData
-                = std::vector<uint16_t>(image->data(), image->data() + image->size());
+            = std::vector<uint16_t>(image->data(), image->data() + image->size());
 
         // Set values to use
         uint32_t width = image->cols();
@@ -300,16 +325,20 @@ void Imageio::WriteSingleChannelUint16(const Path path, std::shared_ptr<ImageUin
     }
 }
 
-void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUint> image) {
+void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUint> image)
+{
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extension must be tif");
-    if (std::filesystem::exists(path)) std::filesystem::remove(path);
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Can't open file");
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extension must be tif");
+    if (std::filesystem::exists(path))
+        std::filesystem::remove(path);
+    TIFF* tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif)
+        throw std::runtime_error("Can't open file");
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint32_t> imageData
-                = std::vector<uint32_t>(image->data(), image->data() + image->size());
+            = std::vector<uint32_t>(image->data(), image->data() + image->size());
 
         // transform(imageData.begin(), imageData.end(), imageData.begin(), [](uint32_t in_v) {
         // return uint64_t(858993459u) * uint64_t(in_v); });
@@ -350,12 +379,16 @@ void Imageio::WriteSingleChannelUint32(const Path path, std::shared_ptr<ImageUin
     }
 }
 
-void Imageio::WriteRGBA(const Path path, std::shared_ptr<ImageUint> image) {
+void Imageio::WriteRGBA(const Path path, std::shared_ptr<ImageUint> image)
+{
     createParentDirectory(path);
-    if (path.extension() != Path(".tif")) throw std::runtime_error("Extention must be tif");
-    if (std::filesystem::exists(path)) std::filesystem::remove(path);
-    TIFF *tif = TIFFOpen(path.string().c_str(), "w");
-    if (!tif) throw std::runtime_error("Cant open file");
+    if (path.extension() != Path(".tif"))
+        throw std::runtime_error("Extention must be tif");
+    if (std::filesystem::exists(path))
+        std::filesystem::remove(path);
+    TIFF* tif = TIFFOpen(path.string().c_str(), "w");
+    if (!tif)
+        throw std::runtime_error("Cant open file");
     else {
         image = std::make_shared<ImageUint>(image->colwise().reverse());
         std::vector<uint8_t> imageData = ImageOperations::decomposeRBGA256(image);

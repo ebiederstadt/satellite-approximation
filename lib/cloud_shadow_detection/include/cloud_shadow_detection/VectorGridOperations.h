@@ -19,4 +19,4 @@ LMSPointReturn LSPointLessThan(std::shared_ptr<VectorGrid> A, float DiagonalLeng
 
 float AverageDotProduct(std::shared_ptr<VectorGrid> A, float DiagonalLength, glm::vec3 pos);
 glm::vec3 AverageDirection(std::shared_ptr<VectorGrid> A);
-}  // namespace VectorGridOperations
+} // namespace VectorGridOperations

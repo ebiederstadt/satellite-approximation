@@ -6,13 +6,15 @@ namespace ComputeEnvironment {
 context Context;
 command_queue CommandQueue;
 
-void InitMainContext() {
+void InitMainContext()
+{
     auto platforms = system::platforms();
-    Context        = context(platforms[0].devices());
-    CommandQueue   = command_queue(Context, Context.get_devices()[0]);
+    Context = context(platforms[0].devices());
+    CommandQueue = command_queue(Context, Context.get_devices()[0]);
 }
 
-std::string PlatformAndDeviceInfo() {
+std::string PlatformAndDeviceInfo()
+{
     std::stringstream buffer;
     try {
         // Discover number of platforms
@@ -41,9 +43,12 @@ std::string PlatformAndDeviceInfo() {
                 cl_device_type info = dev->type();
                 buffer << "\t\tType: ";
                 std::string type;
-                if (info & device::gpu) buffer << "GPU  ";
-                if (info & device::cpu) buffer << "CPU  ";
-                if (info & device::accelerator) buffer << "Accelerator  ";
+                if (info & device::gpu)
+                    buffer << "GPU  ";
+                if (info & device::cpu)
+                    buffer << "CPU  ";
+                if (info & device::accelerator)
+                    buffer << "Accelerator  ";
                 buffer << std::endl;
 
                 buffer << "\t\tMax. Compute Units: " << dev->compute_units() << std::endl;
@@ -73,4 +78,4 @@ std::string PlatformAndDeviceInfo() {
     }
     return buffer.str();
 }
-}  // namespace ComputeEnvironment
+} // namespace ComputeEnvironment
