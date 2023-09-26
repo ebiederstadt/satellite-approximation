@@ -1,24 +1,27 @@
 #include "spatial_approximation/results.h"
 #include "spatial_approximation/approx.h"
 #include "utils/fmt_filesystem.h"
+#include "utils/"
 
 #include <iostream>
 #include <spdlog/spdlog.h>
 #include <sqlite3.h>
 
+auto logger = spdlog::get("main");
+
 namespace spatial_approximation {
 bool write_results_to_db(fs::path const& base_folder, std::unordered_map<std::string, Status> const& results)
 {
-    spdlog::info("writing {} results to the database", base_folder);
+    logger->info("writing {} results to the database", base_folder);
     fs::path db_path = base_folder / fs::path("approximation.db");
     sqlite3* db;
 
     int rc = sqlite3_open(db_path.c_str(), &db);
     if (rc != SQLITE_OK) {
-        spdlog::error("Failed to open db: {}", db_path);
+        logger->error("Failed to open db: {}", db_path);
         return false;
     }
-    spdlog::debug("Opened file: {}", db_path);
+    logger->debug("Opened file: {}", db_path);
     char* err_msg = nullptr;
     sqlite3_stmt* stmt;
 
@@ -66,7 +69,7 @@ VALUES(?, ?, ?, ?, ?, ?)
         sqlite3_bind_double(stmt, 6, status.percent_invalid);
         rc = sqlite3_step(stmt);
         if (rc != SQLITE_DONE) {
-            spdlog::error("First INSERT failed: {}", sqlite3_errmsg(db));
+            logger->error("First INSERT failed: {}", sqlite3_errmsg(db));
             goto fail;
         }
         sqlite3_finalize(stmt);
@@ -83,7 +86,7 @@ VALUES(?, ?, ?, ?)
             sqlite3_bind_text(stmt, 4, date.c_str(), (int)date.length(), SQLITE_STATIC);
             rc = sqlite3_step(stmt);
             if (rc != SQLITE_DONE) {
-                spdlog::error("Second INSERT failed: {}", sqlite3_errmsg(db));
+                logger->error("Second INSERT failed: {}", sqlite3_errmsg(db));
                 goto fail;
             }
             sqlite3_finalize(stmt);
@@ -95,7 +98,7 @@ VALUES(?, ?, ?, ?)
 
 fail:
     if (err_msg != nullptr) {
-        spdlog::error("SQL Error: {}", err_msg);
+        logger->error("SQL Error: {}", err_msg);
         sqlite3_free(err_msg);
     }
     sqlite3_finalize(stmt);

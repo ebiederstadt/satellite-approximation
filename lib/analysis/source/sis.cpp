@@ -4,6 +4,7 @@
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
+#include "utils/log.h"
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <execution>
@@ -13,6 +14,8 @@
 #include <vector>
 
 namespace date_time = boost::gregorian;
+
+static auto logger = utils::create_logger("analysis:SIS");
 
 namespace analysis {
 utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index)
@@ -293,7 +296,7 @@ void single_image_summary(
                 choices);
         });
 
-    spdlog::info("{} days used for analysis", num_dates_used_for_analysis);
+    logger->info("{} days used for analysis", num_dates_used_for_analysis);
 
     // Save the results to disk
     for (auto const& [year, result] : yearly_data) {

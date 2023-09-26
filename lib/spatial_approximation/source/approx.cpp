@@ -21,6 +21,8 @@ using Triplet = Eigen::Triplet<T>;
 using sparse_t = Eigen::SparseMatrix<f64>;
 using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
 
+static auto logger = spdlog::get("main");
+
 bool on_border(Eigen::Index row, Eigen::Index col, MatX<f64> const& image)
 {
     bool row_border = row == 0 || row == image.rows() - 1;
@@ -40,7 +42,7 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
         }
     }
     if (invalid_pixels.empty()) {
-        spdlog::info("Could not perform approximation: no invalid pixels");
+        logger->info("Could not perform approximation: no invalid pixels");
         return;
     }
 
@@ -203,14 +205,14 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
 
     spdlog::stopwatch sw;
     solve_matrix(input_image, invalid_pixels);
-    spdlog::debug("It took {} seconds to solve the problem", sw);
+    logger->debug("It took {} seconds to solve the problem", sw);
 }
 
 void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
 {
-    spdlog::debug("Processing directory: {}", base_folder);
+    logger->debug("Processing directory: {}", base_folder);
     if (!is_directory(base_folder)) {
-        spdlog::warn("Could not process: base folder is not a directory ({})", base_folder);
+        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
         return;
     }
 
@@ -225,10 +227,10 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
 
     std::mutex mutex;
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
-        spdlog::debug("Starting folder: {}", folder);
+        logger->debug("Starting folder: {}", folder);
         fs::path output_dir = folder / fs::path("approximated_data");
         if (!fs::exists(output_dir)) {
-            spdlog::info("Creating directory: {}", output_dir);
+            logger->info("Creating directory: {}", output_dir);
             fs::create_directory(output_dir);
         }
 
@@ -241,7 +243,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
                 cloud_tiff = utils::GeoTIFF<u16>(folder / fs::path("cloud_mask.tif"));
                 status.clouds_computed = true;
             } catch (std::runtime_error const& e) {
-                spdlog::warn("Failed to open cloud file. Failed with error: {}", e.what());
+                logger->warn("Failed to open cloud file. Failed with error: {}", e.what());
             }
         }
         if (fs::exists(folder / fs::path("shadow_mask.tif"))) {
@@ -249,11 +251,11 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
                 shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
                 status.shadows_computed = true;
             } catch (std::runtime_error const& e) {
-                spdlog::warn("Failed to open shadow file. Failed with error: {}", e.what());
+                logger->warn("Failed to open shadow file. Failed with error: {}", e.what());
             }
         }
         if (!(status.clouds_computed || status.shadows_computed)) {
-            spdlog::warn("Could not find mask data. Skipping dir: {}", folder);
+            logger->warn("Could not find mask data. Skipping dir: {}", folder);
             return;
         }
 
@@ -267,7 +269,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         }
         status.percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
         if (status.percent_invalid >= skip_threshold) {
-            spdlog::info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
             // Even though we are skipping spatial approximation, we still want to record stats about this date
             std::lock_guard<std::mutex> lock(mutex);
             results.insert({ folder.filename().string(), status });
@@ -290,7 +292,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         std::lock_guard<std::mutex> lock(mutex);
         results.insert({ folder.filename().string(), status });
 
-        spdlog::debug("Finished folder: {}", folder);
+        logger->info("Finished folder: {}", folder);
     });
 
     spatial_approximation::write_results_to_db(base_folder, results);

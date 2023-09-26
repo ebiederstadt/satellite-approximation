@@ -8,6 +8,7 @@
 
 namespace analysis {
 DataBase::DataBase(fs::path const& base_path)
+    : logger(spdlog::get("analysis::DB"))
 {
     fs::path db_path = base_path / fs::path("approximation.db");
     int rc = sqlite3_open(db_path.c_str(), &db);
@@ -52,7 +53,7 @@ CloudShadowStatus DataBase::get_status(std::string date)
     sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
     int rc = sqlite3_step(stmt);
     if (rc != SQLITE_ROW) {
-        spdlog::error("Failed to find date of interest: {}. Ran query: {}, rc={}", date, sqlite3_expanded_sql(stmt),
+        logger->error("Failed to find date of interest: {}. Ran query: {}, rc={}", date, sqlite3_expanded_sql(stmt),
             rc);
         return {};
     }
@@ -171,7 +172,7 @@ RETURNING id;
     if (rc == SQLITE_ROW) {
         result = sqlite3_column_int(stmt_insert, 0);
     } else if (rc != SQLITE_ERROR) {
-        spdlog::error("Failed to insert into db. rc={}", rc);
+        logger->error("Failed to insert into db. rc={}", rc);
     }
     sqlite3_finalize(stmt_insert);
 

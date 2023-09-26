@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "utils/dbg.h"
+#include "utils/log.h"
 
 #include <gdal/gdal_priv.h>
 #include <givde/types.hpp>
@@ -94,6 +94,7 @@ public:
 
     GeoTIFF(std::string path, int bandIndex = 1)
         : m_path(path)
+        , logger(utils::create_logger("utils::GeoTIFF"))
     {
         GDALDatasetWrapper dataset { path };
         dataSetCRS = OGRSpatialReference { dataset->GetProjectionRef() };
@@ -159,7 +160,7 @@ public:
     {
     }
 
-    // Default the move/copy constructors and assignment operators.
+    // Default the move/copy constructogrs and assignment operators.
     GeoTIFF(GeoTIFF const&) = default;
     GeoTIFF(GeoTIFF&&) noexcept = default;
     auto operator=(GeoTIFF const&) -> GeoTIFF& = default;
@@ -178,11 +179,9 @@ public:
             throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
         }
         char** papszMetadata = poDriver->GetMetadata();
-        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATE, FALSE) != 0) {
-            spdlog::debug("Driver {} supports Create() method.", pszFormat);
-        }
-        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) != 0) {
-            spdlog::debug("Driver {} supports CreateCopy() method.", pszFormat);
+        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
+            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
+            return;
         }
 
         // Use a unique_ptr to manage lifetime
@@ -197,15 +196,12 @@ public:
         };
 
         GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
-        spdlog::debug(
-            "[GEOTIFF] CRS.Name: {}, RasterCount: {}",
+        logger->debug(
+            "Writing to file. CRS.Name: {}, RasterCount: {}",
             dataSetCRS.GetName(),
             poDstDS->GetRasterCount());
 
         GDALTypeForOurType<ScalarT> type;
-        if (type.type == GDT_Float64) {
-            spdlog::debug("Writing values (f64), min: {}, max: {}", values.minCoeff(), values.maxCoeff());
-        }
         auto err = band->RasterIO(
             GF_Write,
             0, 0,
@@ -216,6 +212,7 @@ public:
             0, 0, 0);
 
         if (err != CE_None) {
+            logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
             throw std::runtime_error("Unable to write raster image");
         }
         poDstDS->FlushCache();
@@ -338,5 +335,6 @@ private:
     OGRSpatialReference dataSetCRS;
     OGRSpatialReference lngLatCRS;
     std::string m_path;
+    std::shared_ptr<spdlog::logger> logger;
 };
 }

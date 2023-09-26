@@ -26,4 +26,5 @@ add_executable(main_analysis main-analysis.cpp)
 target_link_libraries(main_analysis
         givdetypes::givdetypes
         analysis
+        utils
         spdlog::spdlog)

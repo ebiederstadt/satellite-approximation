@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <givde/types.hpp>
+#include <spdlog/spdlog.h>
 #include <sqlite3.h>
 #include <variant>
 
@@ -23,6 +24,7 @@ using DataChoices = std::variant<UseApproximatedData, UseRealData>;
 
 class DataBase {
     MAKE_NONCOPYABLE(DataBase);
+
 public:
     DataBase(fs::path const& base_path);
     ~DataBase();
@@ -48,6 +50,7 @@ private:
     sqlite3* db;
     std::string sql;
     sqlite3_stmt* stmt;
+    std::shared_ptr<spdlog::logger> logger;
 
     void create_sis_table();
     sqlite3_stmt* prepare_stmt(

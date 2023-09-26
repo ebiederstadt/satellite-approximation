@@ -3,14 +3,18 @@
 #include <gdal/gdal_priv.h>
 #include <spdlog/spdlog.h>
 #include <sqlite3.h>
+#include <utils/log.h>
 
 namespace fs = std::filesystem;
 using namespace givde;
 
 int main(int argc, char** argv)
 {
+    utils::create_logger("main");
+    auto logger = spdlog::get("main");
+
     if (argc != 6) {
-        spdlog::error("Usage: {} base_path start_year end_year index threshold", argv[0]);
+        logger->error("Usage: {} base_path start_year end_year index threshold", argv[0]);
         return -1;
     }
 
@@ -21,7 +25,7 @@ int main(int argc, char** argv)
     int end_year = std::stoi(argv[3]);
     auto index_or_none = analysis::from_str(argv[4]);
     if (!index_or_none.has_value()) {
-        spdlog::error("Failed to map to provided index to a known index (tried {})", argv[4]);
+        logger->error("Failed to map to provided index to a known index (tried {})", argv[4]);
         return -1;
     }
     auto index = index_or_none.value();
