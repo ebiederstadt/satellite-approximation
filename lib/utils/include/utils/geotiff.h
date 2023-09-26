@@ -13,70 +13,70 @@
 using namespace givde;
 
 namespace utils {
-    class GDALDatasetWrapper {
-    public:
-        explicit GDALDatasetWrapper(std::string path);
-        virtual ~GDALDatasetWrapper();
+class GDALDatasetWrapper {
+public:
+    explicit GDALDatasetWrapper(std::string path);
+    virtual ~GDALDatasetWrapper();
 
-        GDALDatasetWrapper(GDALDatasetWrapper const&) = delete;
-        GDALDatasetWrapper(GDALDatasetWrapper&&) = default;
-        GDALDatasetWrapper& operator=(GDALDatasetWrapper const&) = delete;
-        GDALDatasetWrapper& operator=(GDALDatasetWrapper&&) = default;
+    GDALDatasetWrapper(GDALDatasetWrapper const&) = delete;
+    GDALDatasetWrapper(GDALDatasetWrapper&&) = default;
+    GDALDatasetWrapper& operator=(GDALDatasetWrapper const&) = delete;
+    GDALDatasetWrapper& operator=(GDALDatasetWrapper&&) = default;
 
-        explicit operator GDALDataset*() { return dataset; }
-        GDALDataset* operator->() { return dataset; }
+    explicit operator GDALDataset*() { return dataset; }
+    GDALDataset* operator->() { return dataset; }
 
-    private:
-        GDALDataset* dataset;
-    };
+private:
+    GDALDataset* dataset;
+};
 
-    const u64 EPSG_WGS84 = 4326;
+u64 const EPSG_WGS84 = 4326;
 
 // Helper to select the appropriate GDALDataType value from our
 // internal type
-    template<typename ScalarT>
-    struct GDALTypeForOurType { };
+template<typename ScalarT>
+struct GDALTypeForOurType { };
 
-    template<>
-    struct GDALTypeForOurType<u8> {
-        GDALDataType type = GDT_Byte;
-    };
-    template<>
-    struct GDALTypeForOurType<u16> {
-        GDALDataType type = GDT_UInt16;
-    };
-    template<>
-    struct GDALTypeForOurType<u32> {
-        GDALDataType type = GDT_UInt32;
-    };
-    template<>
-    struct GDALTypeForOurType<i16> {
-        GDALDataType type = GDT_Int16;
-    };
-    template<>
-    struct GDALTypeForOurType<i32> {
-        GDALDataType type = GDT_Int32;
-    };
-    template<>
-    struct GDALTypeForOurType<f32> {
-        GDALDataType type = GDT_Float32;
-    };
-    template<>
-    struct GDALTypeForOurType<f64> {
-        GDALDataType type = GDT_Float64;
-    };
+template<>
+struct GDALTypeForOurType<u8> {
+    GDALDataType type = GDT_Byte;
+};
+template<>
+struct GDALTypeForOurType<u16> {
+    GDALDataType type = GDT_UInt16;
+};
+template<>
+struct GDALTypeForOurType<u32> {
+    GDALDataType type = GDT_UInt32;
+};
+template<>
+struct GDALTypeForOurType<i16> {
+    GDALDataType type = GDT_Int16;
+};
+template<>
+struct GDALTypeForOurType<i32> {
+    GDALDataType type = GDT_Int32;
+};
+template<>
+struct GDALTypeForOurType<f32> {
+    GDALDataType type = GDT_Float32;
+};
+template<>
+struct GDALTypeForOurType<f64> {
+    GDALDataType type = GDT_Float64;
+};
 
-    template<typename T, typename = int>
-    struct HasType : std::false_type { };
+template<typename T, typename = int>
+struct HasType : std::false_type { };
 
-    template<typename T>
-    struct HasType<T, decltype((void)T::type, 0)> : std::true_type { };
+template<typename T>
+struct HasType<T, decltype((void)T::type, 0)> : std::true_type { };
 
-    template<typename T>
-    struct Domain {
-        T start;
-        T end;
-    };
+template<typename T>
+struct Domain {
+    T start;
+    T end;
+};
 
 //------------------------------------------------------------------------------
 // Useful references:
@@ -84,259 +84,259 @@ namespace utils {
 // https://gdal.org/tutorials/raster_api_tut.html
 //------------------------------------------------------------------------------
 
-    template<typename ScalarT>
-    class GeoTIFF {
-    public:
-        static_assert(
-                HasType<GDALTypeForOurType<ScalarT>>::value,
-                "We only support a limited set of GDAL data types at the moment."
-                " These include u8, u16, u32, i16, i32, f32, f64");
+template<typename ScalarT>
+class GeoTIFF {
+public:
+    static_assert(
+        HasType<GDALTypeForOurType<ScalarT>>::value,
+        "We only support a limited set of GDAL data types at the moment."
+        " These include u8, u16, u32, i16, i32, f32, f64");
 
-        GeoTIFF(std::string path, int bandIndex = 1)
-                : m_path(path)
-        {
-            GDALDatasetWrapper dataset { path };
-            dataSetCRS = OGRSpatialReference { dataset->GetProjectionRef() };
-            lngLatCRS.importFromEPSG(EPSG_WGS84);
-            lngLatCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-            dataSetCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-            GDALRasterBand* band = dataset->GetRasterBand(bandIndex);
+    GeoTIFF(std::string path, int bandIndex = 1)
+        : m_path(path)
+    {
+        GDALDatasetWrapper dataset { path };
+        dataSetCRS = OGRSpatialReference { dataset->GetProjectionRef() };
+        lngLatCRS.importFromEPSG(EPSG_WGS84);
+        lngLatCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+        dataSetCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+        GDALRasterBand* band = dataset->GetRasterBand(bandIndex);
 
-            width = dataset->GetRasterXSize();
-            height = dataset->GetRasterYSize();
+        width = dataset->GetRasterXSize();
+        height = dataset->GetRasterYSize();
 
-            values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
-            GDALTypeForOurType<ScalarT> type;
-            auto err = band->RasterIO(
-                    GF_Read,
-                    0, 0,
-                    width, height,
-                    values.data(),
-                    width, height,
-                    type.type,
-                    0, 0, 0);
+        values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
+        GDALTypeForOurType<ScalarT> type;
+        auto err = band->RasterIO(
+            GF_Read,
+            0, 0,
+            width, height,
+            values.data(),
+            width, height,
+            type.type,
+            0, 0, 0);
 
-            if (err != CE_None) {
-                throw std::runtime_error("Unable to load raster image");
+        if (err != CE_None) {
+            throw std::runtime_error("Unable to load raster image");
+        }
+
+        if (dataset->GetGeoTransform(geoTransform) != CE_None) {
+            throw std::runtime_error("Unable to load the geo transformation information (file: " + path + ")");
+        }
+
+        // Grab their current bounding coordinates
+        // (in their coordinate reference system)
+        auto convertToLatLng = [&](LatLng const& theirPoint) {
+            OGRPoint p;
+            p.setX(theirPoint.y().number());
+            p.setY(theirPoint.x().number());
+            p.assignSpatialReference(&dataSetCRS);
+            if (p.transformTo(&lngLatCRS) != OGRERR_NONE) {
+                throw std::runtime_error("Unable to convert points between coordinate systems");
             }
+            return LatLng(p.getY(), p.getX());
+        };
 
-            if (dataset->GetGeoTransform(geoTransform) != CE_None) {
-                throw std::runtime_error("Unable to load the geo transformation information (file: " + path + ")");
-            }
+        auto nw = northWest();
+        auto se = southEast();
+        // Convert NW
+        nw = convertToLatLng(nw);
+        geoTransform[0] = nw.y().number(); // lng
+        geoTransform[3] = nw.x().number(); // lat
 
-            // Grab their current bounding coordinates
-            // (in their coordinate reference system)
-            auto convertToLatLng = [&](LatLng const& theirPoint) {
-                OGRPoint p;
-                p.setX(theirPoint.y().number());
-                p.setY(theirPoint.x().number());
-                p.assignSpatialReference(&dataSetCRS);
-                if (p.transformTo(&lngLatCRS) != OGRERR_NONE) {
-                    throw std::runtime_error("Unable to convert points between coordinate systems");
-                }
-                return LatLng(p.getY(), p.getX());
-            };
+        // Convert SW
+        se = convertToLatLng(se);
+        geoTransform[1] = (se.y() - nw.y()).number() / static_cast<f64>(width);  // lng
+        geoTransform[5] = (se.x() - nw.x()).number() / static_cast<f64>(height); // lat
+    }
 
-            auto nw = northWest();
-            auto se = southEast();
-            // Convert NW
-            nw = convertToLatLng(nw);
-            geoTransform[0] = nw.y().number(); // lng
-            geoTransform[3] = nw.x().number(); // lat
+    // Default constructor for the GeoTIFF.
+    GeoTIFF()
+        : width(0)
+        , height(0)
+        , values(MatX<ScalarT>::Zero(0, 0))
+        , geoTransform {}
+    {
+    }
 
-            // Convert SW
-            se = convertToLatLng(se);
-            geoTransform[1] = (se.y() - nw.y()).number() / static_cast<f64>(width);  // lng
-            geoTransform[5] = (se.x() - nw.x()).number() / static_cast<f64>(height); // lat
+    // Default the move/copy constructors and assignment operators.
+    GeoTIFF(GeoTIFF const&) = default;
+    GeoTIFF(GeoTIFF&&) noexcept = default;
+    auto operator=(GeoTIFF const&) -> GeoTIFF& = default;
+    auto operator=(GeoTIFF&&) noexcept -> GeoTIFF& = default;
+
+    void write(std::string const& pathOfDestination, int bandIndex = 1) const
+    {
+        return write(pathOfDestination, m_path, bandIndex);
+    }
+
+    void write(std::string const& pathOfDestination, std::string const& pathOfTemplate, int bandIndex = 1) const
+    {
+        char const* pszFormat = "GTiff";
+        GDALDriver* poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
+        if (poDriver == nullptr) {
+            throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
+        }
+        char** papszMetadata = poDriver->GetMetadata();
+        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATE, FALSE) != 0) {
+            spdlog::debug("Driver {} supports Create() method.", pszFormat);
+        }
+        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) != 0) {
+            spdlog::debug("Driver {} supports CreateCopy() method.", pszFormat);
         }
 
-        // Default constructor for the GeoTIFF.
-        GeoTIFF()
-                : width(0)
-                , height(0)
-                , values(MatX<ScalarT>::Zero(0, 0))
-                , geoTransform {}
-        {
+        // Use a unique_ptr to manage lifetime
+        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poSrcDS {
+            static_cast<GDALDataset*>(GDALOpen(pathOfTemplate.c_str(), GA_ReadOnly)),
+            GDALClose
+        };
+
+        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poDstDS {
+            poDriver->CreateCopy(pathOfDestination.c_str(), poSrcDS.get(), TRUE, nullptr, nullptr, nullptr),
+            GDALClose
+        };
+
+        GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
+        spdlog::debug(
+            "[GEOTIFF] CRS.Name: {}, RasterCount: {}",
+            dataSetCRS.GetName(),
+            poDstDS->GetRasterCount());
+
+        GDALTypeForOurType<ScalarT> type;
+        if (type.type == GDT_Float64) {
+            spdlog::debug("Writing values (f64), min: {}, max: {}", values.minCoeff(), values.maxCoeff());
         }
+        auto err = band->RasterIO(
+            GF_Write,
+            0, 0,
+            this->width, this->height,
+            const_cast<void*>(static_cast<void const*>(this->values.data())),
+            this->width, this->height,
+            type.type,
+            0, 0, 0);
 
-        // Default the move/copy constructors and assignment operators.
-        GeoTIFF(GeoTIFF const&) = default;
-        GeoTIFF(GeoTIFF&&) noexcept = default;
-        auto operator=(GeoTIFF const&) -> GeoTIFF& = default;
-        auto operator=(GeoTIFF&&) noexcept -> GeoTIFF& = default;
-
-        void write(std::string const& pathOfDestination, int bandIndex = 1) const
-        {
-            return write(pathOfDestination, m_path, bandIndex);
+        if (err != CE_None) {
+            throw std::runtime_error("Unable to write raster image");
         }
+        poDstDS->FlushCache();
+    }
 
-        void write(std::string const& pathOfDestination, std::string const& pathOfTemplate, int bandIndex = 1) const
-        {
-            char const* pszFormat = "GTiff";
-            GDALDriver* poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
-            if (poDriver == nullptr) {
-                throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
-            }
-            char** papszMetadata = poDriver->GetMetadata();
-            if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATE, FALSE) != 0) {
-                spdlog::debug("Driver {} supports Create() method.", pszFormat);
-            }
-            if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) != 0) {
-                spdlog::debug("Driver {} supports CreateCopy() method.", pszFormat);
-            }
+    //------------------------------------------------------------------------------
+    // https://gdal.org/tutorials/geotransforms_tut.html#geotransforms-tut
+    // GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
+    // GT(1) w-e pixel resolution / pixel width.
+    // GT(2) row rotation (typically zero).
+    // GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
+    // GT(4) column rotation (typically zero).
+    // GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
+    //------------------------------------------------------------------------------
+    f64 eastWestStep() const { return geoTransform[1]; }
+    f64 northSouthStep() const { return geoTransform[5]; }
 
-            // Use a unique_ptr to manage lifetime
-            std::unique_ptr<GDALDataset, decltype(&GDALClose)> poSrcDS {
-                    static_cast<GDALDataset*>(GDALOpen(pathOfTemplate.c_str(), GA_ReadOnly)),
-                    GDALClose
-            };
+    // TODO: assumes north-up images
+    f64 north() const { return geoTransform[3]; }
+    f64 west() const { return geoTransform[0]; }
+    f64 south() const { return geoTransform[3] + (height * northSouthStep()); }
+    f64 east() const { return geoTransform[0] + (width * eastWestStep()); }
 
-            std::unique_ptr<GDALDataset, decltype(&GDALClose)> poDstDS {
-                    poDriver->CreateCopy(pathOfDestination.c_str(), poSrcDS.get(), TRUE, nullptr, nullptr, nullptr),
-                    GDALClose
-            };
+    LatLng northWest() const { return LatLng(north(), west()); }
+    LatLng northEast() const { return LatLng(north(), east()); }
+    LatLng southEast() const { return LatLng(south(), east()); }
+    LatLng southWest() const { return LatLng(south(), west()); }
 
-            GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
-            spdlog::debug(
-                    "[GEOTIFF] CRS.Name: {}, RasterCount: {}",
-                    dataSetCRS.GetName(),
-                    poDstDS->GetRasterCount());
+    ScalarT valueAt(LatLng const& pos) const
+    {
+        Vec2<i64> i = indexAt(pos);
+        return values(static_cast<Eigen::Index>(i.y()), static_cast<Eigen::Index>(i.x()));
+    }
 
-            GDALTypeForOurType<ScalarT> type;
-            if (type.type == GDT_Float64) {
-                spdlog::debug("Writing values (f64), min: {}, max: {}", values.minCoeff(), values.maxCoeff());
-            }
-            auto err = band->RasterIO(
-                    GF_Write,
-                    0, 0,
-                    this->width, this->height,
-                    const_cast<void*>(static_cast<void const*>(this->values.data())),
-                    this->width, this->height,
-                    type.type,
-                    0, 0, 0);
+    ScalarT bilinearValueAt(LatLng const& pos) const
+    {
+        // https://en.wikipedia.org/wiki/Bilinear_interpolation#Algorithm
+        f64 x = (pos.y() - west()) / eastWestStep();
+        f64 y = (pos.x() - north()) / northSouthStep();
+        f64 x1 = std::floor(x);
+        f64 x2 = std::ceil(x);
+        f64 y1 = std::floor(y);
+        f64 y2 = std::ceil(y);
 
-            if (err != CE_None) {
-                throw std::runtime_error("Unable to write raster image");
-            }
-            poDstDS->FlushCache();
-        }
+        auto value = [&](f64 fx, f64 fy) {
+            Eigen::Index x_i = std::clamp(static_cast<i64>(fx), static_cast<i64>(0), static_cast<i64>(width - 1));
+            Eigen::Index y_i = std::clamp(static_cast<i64>(fy), static_cast<i64>(0), static_cast<i64>(height - 1));
+            return values(y_i, x_i);
+        };
+        ScalarT f_Q11 = value(x1, y1);
+        ScalarT f_Q12 = value(x1, y2);
+        ScalarT f_Q21 = value(x2, y1);
+        ScalarT f_Q22 = value(x2, y2);
+        f64 s = 1.0 / ((x2 - x1) * (y2 - y1));
+        Vec2<f64> v1 { x2 - x, x - x1 };
+        Vec2<f64> v2 { y2 - y, y - y1 };
+        Mat2<f64> M;
+        M << f_Q11, f_Q12,
+            f_Q21, f_Q22;
+        return static_cast<ScalarT>(s * ((v1.transpose() * (M * v2))(0, 0)));
+    }
 
-        //------------------------------------------------------------------------------
-        // https://gdal.org/tutorials/geotransforms_tut.html#geotransforms-tut
-        // GT(0) x-coordinate of the upper-left corner of the upper-left pixel.
-        // GT(1) w-e pixel resolution / pixel width.
-        // GT(2) row rotation (typically zero).
-        // GT(3) y-coordinate of the upper-left corner of the upper-left pixel.
-        // GT(4) column rotation (typically zero).
-        // GT(5) n-s pixel resolution / pixel height (negative value for a north-up image).
-        //------------------------------------------------------------------------------
-        f64 eastWestStep() const { return geoTransform[1]; }
-        f64 northSouthStep() const { return geoTransform[5]; }
+    Vec2<f64> uvAt(LatLng const& pos)
+    {
+        Vec2<i64> i = indexAt(pos);
 
-        // TODO: assumes north-up images
-        f64 north() const { return geoTransform[3]; }
-        f64 west() const { return geoTransform[0]; }
-        f64 south() const { return geoTransform[3] + (height * northSouthStep()); }
-        f64 east() const { return geoTransform[0] + (width * eastWestStep()); }
+        f64 u = static_cast<f64>(i.x()) / width;
+        f64 v = static_cast<f64>(i.y()) / height;
 
-        LatLng northWest() const { return LatLng(north(), west()); }
-        LatLng northEast() const { return LatLng(north(), east()); }
-        LatLng southEast() const { return LatLng(south(), east()); }
-        LatLng southWest() const { return LatLng(south(), west()); }
+        return Vec2<f64>(u, v);
+    }
 
-        ScalarT valueAt(LatLng const& pos) const
-        {
-            Vec2<i64> i = indexAt(pos);
-            return values(static_cast<Eigen::Index>(i.y()), static_cast<Eigen::Index>(i.x()));
-        }
+    Vec2<i64> indexAt(LatLng const& pos) const
+    {
+        i64 x = i64((pos.y() - west()) / eastWestStep());
+        i64 y = i64((pos.x() - north()) / northSouthStep());
+        x = std::clamp(x, static_cast<i64>(0), static_cast<i64>(width - 1));
+        y = std::clamp(y, static_cast<i64>(0), static_cast<i64>(height - 1));
 
-        ScalarT bilinearValueAt(LatLng const& pos) const
-        {
-            // https://en.wikipedia.org/wiki/Bilinear_interpolation#Algorithm
-            f64 x = (pos.y() - west()) / eastWestStep();
-            f64 y = (pos.x() - north()) / northSouthStep();
-            f64 x1 = std::floor(x);
-            f64 x2 = std::ceil(x);
-            f64 y1 = std::floor(y);
-            f64 y2 = std::ceil(y);
+        return Vec2<i64>(x, y);
+    }
 
-            auto value = [&](f64 fx, f64 fy) {
-                Eigen::Index x_i = std::clamp(static_cast<i64>(fx), static_cast<i64>(0), static_cast<i64>(width - 1));
-                Eigen::Index y_i = std::clamp(static_cast<i64>(fy), static_cast<i64>(0), static_cast<i64>(height - 1));
-                return values(y_i, x_i);
-            };
-            ScalarT f_Q11 = value(x1, y1);
-            ScalarT f_Q12 = value(x1, y2);
-            ScalarT f_Q21 = value(x2, y1);
-            ScalarT f_Q22 = value(x2, y2);
-            f64 s = 1.0 / ((x2 - x1) * (y2 - y1));
-            Vec2<f64> v1 { x2 - x, x - x1 };
-            Vec2<f64> v2 { y2 - y, y - y1 };
-            Mat2<f64> M;
-            M << f_Q11, f_Q12,
-                    f_Q21, f_Q22;
-            return static_cast<ScalarT>(s * ((v1.transpose() * (M * v2))(0, 0)));
-        }
+    LatLng midPointOfPixel(Vec2<i64> index) const
+    {
+        return LatLng(
+            north() + (northSouthStep() * static_cast<f64>(index.x())) + (northSouthStep() * 0.5),
+            west() + (eastWestStep() * static_cast<f64>(index.y())) + (eastWestStep() * 0.5));
+    }
 
-        Vec2<f64> uvAt(LatLng const& pos)
-        {
-            Vec2<i64> i = indexAt(pos);
+    template<typename OScalarT>
+    Domain<OScalarT> valueDomain() const
+    {
+        return Domain<OScalarT> {
+            static_cast<OScalarT>(values.minCoeff()),
+            static_cast<OScalarT>(values.maxCoeff())
+        };
+    }
 
-            f64 u = static_cast<f64>(i.x()) / width;
-            f64 v = static_cast<f64>(i.y()) / height;
+    // DEMs tend to use -32767.0 as the sentinel for "NO DATA"
+    // This calculation will ignore those.
+    template<typename OScalarT>
+    Domain<OScalarT> demValueDomain() const
+    {
+        auto maxValue = values.maxCoeff();
+        MatX<ScalarT> selectionMatrix = (values.array() <= -32767.f).template cast<ScalarT>();
+        MatX<ScalarT> tmpValues = values + (32767 * selectionMatrix) + (maxValue * selectionMatrix);
+        return Domain<OScalarT> {
+            static_cast<OScalarT>(tmpValues.minCoeff()),
+            static_cast<OScalarT>(maxValue)
+        };
+    }
 
-            return Vec2<f64>(u, v);
-        }
+    int width;
+    int height;
 
-        Vec2<i64> indexAt(LatLng const& pos) const
-        {
-            i64 x = i64((pos.y() - west()) / eastWestStep());
-            i64 y = i64((pos.x() - north()) / northSouthStep());
-            x = std::clamp(x, static_cast<i64>(0), static_cast<i64>(width - 1));
-            y = std::clamp(y, static_cast<i64>(0), static_cast<i64>(height - 1));
+    MatX<ScalarT> values;
+    f64 geoTransform[6];
 
-            return Vec2<i64>(x, y);
-        }
-
-        LatLng midPointOfPixel(Vec2<i64> index) const
-        {
-            return LatLng(
-                    north() + (northSouthStep() * static_cast<f64>(index.x())) + (northSouthStep() * 0.5),
-                    west() + (eastWestStep() * static_cast<f64>(index.y())) + (eastWestStep() * 0.5));
-        }
-
-        template<typename OScalarT>
-        Domain<OScalarT> valueDomain() const
-        {
-            return Domain<OScalarT> {
-                    static_cast<OScalarT>(values.minCoeff()),
-                    static_cast<OScalarT>(values.maxCoeff())
-            };
-        }
-
-        // DEMs tend to use -32767.0 as the sentinel for "NO DATA"
-        // This calculation will ignore those.
-        template<typename OScalarT>
-        Domain<OScalarT> demValueDomain() const
-        {
-            auto maxValue = values.maxCoeff();
-            MatX<ScalarT> selectionMatrix = (values.array() <= -32767.f).template cast<ScalarT>();
-            MatX<ScalarT> tmpValues = values + (32767 * selectionMatrix) + (maxValue * selectionMatrix);
-            return Domain<OScalarT> {
-                    static_cast<OScalarT>(tmpValues.minCoeff()),
-                    static_cast<OScalarT>(maxValue)
-            };
-        }
-
-        int width;
-        int height;
-
-        MatX<ScalarT> values;
-        f64 geoTransform[6];
-
-    private:
-        OGRSpatialReference dataSetCRS;
-        OGRSpatialReference lngLatCRS;
-        std::string m_path;
-    };
+private:
+    OGRSpatialReference dataSetCRS;
+    OGRSpatialReference lngLatCRS;
+    std::string m_path;
+};
 }

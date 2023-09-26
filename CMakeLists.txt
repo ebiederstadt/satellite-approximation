@@ -39,6 +39,7 @@ python_add_library(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers
         cloud_shadow_detection
         spatial_approximation
+        analysis
         bfg::lyra
         givdetypes::givdetypes
         tomlplusplus::tomlplusplus

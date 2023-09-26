@@ -7,7 +7,8 @@
 namespace fs = std::filesystem;
 using namespace givde;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     if (argc != 6) {
         spdlog::error("Usage: {} base_path start_year end_year index threshold", argv[0]);
         return -1;
@@ -30,5 +31,5 @@ int main(int argc, char **argv) {
     spdlog::set_level(spdlog::level::debug);
     GDALAllRegister();
 
-    analysis::single_image_summary(base_folder, true, start_year, end_year, index, threshold, data_choices);
+    analysis::single_image_summary(base_folder, false, start_year, end_year, index, threshold, data_choices);
 }

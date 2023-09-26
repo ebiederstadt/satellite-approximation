@@ -15,7 +15,7 @@
 namespace date_time = boost::gregorian;
 
 namespace analysis {
-utils::GeoTIFF<f64> compute_index(fs::path const& folder, Indices index)
+utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index)
 {
     auto tiff_name = fmt::format("{}.tif", magic_enum::enum_name(index));
     fs::path tiff_path = folder / fs::path(tiff_name);
@@ -25,13 +25,12 @@ utils::GeoTIFF<f64> compute_index(fs::path const& folder, Indices index)
 
     // Compute the result of (a - b) / (a + b), where 0 / 0 = 0
     // Also stores the result to the disk
-    auto normalized_computation = [&tiff_path](MatX<f64> const& a, MatX<f64> const& b) {
-        fs::path tiff_template = tiff_path.parent_path() / "B04.tif";
-        utils::GeoTIFF<f64> result(tiff_template);
+    auto normalized_computation = [&](MatX<f64> const& a, MatX<f64> const& b) {
+        utils::GeoTIFF<f64> result(template_path);
         MatX<f64> computation = (a.array() - b.array()) / (a.array() + b.array());
         computation = computation.unaryExpr([](f64 v) { return std::isfinite(v) ? v : 0.0; });
         result.values = computation;
-        result.write(tiff_path, tiff_template);
+        result.write(tiff_path, template_path);
         return result;
     };
 
@@ -97,6 +96,11 @@ std::string cache_string(int id, bool use_raw_data)
     return fmt::format("sis_{}{}.tif", id, use_raw_data ? "_raw" : "");
 }
 
+std::string count_string(int id)
+{
+    return fmt::format("count_{}.tif", id);
+}
+
 std::vector<std::string> required_files(Indices index)
 {
     switch (index) {
@@ -108,6 +112,8 @@ std::vector<std::string> required_files(Indices index)
         return { "B03", "B11" };
     case Indices::SWI:
         return { "B03", "B08", "B11" };
+    default:
+        throw std::runtime_error(fmt::format("Failed to handle case for {}", magic_enum::enum_name(index)));
     }
 }
 
@@ -142,7 +148,7 @@ void single_image_summary(
 
     auto find_tiff_info = [&]() {
         for (auto const& path : folders_to_process) {
-            utils::GeoTIFF<f64> tiff_file { path / fs::path("B04.tif") };
+            utils::GeoTIFF<f64> tiff_file { path / fs::path("viewZenithMean.tif") };
             return tiff_file;
         }
         throw std::runtime_error(
@@ -150,15 +156,15 @@ void single_image_summary(
     };
 
     utils::GeoTIFF<f64> example_tiff = find_tiff_info();
-    auto width = example_tiff.width;
-    auto height = example_tiff.height;
+    auto ncols = example_tiff.width;
+    auto nrows = example_tiff.height;
 
     // Initialize
     std::unordered_map<int, ResultContainer> yearly_data;
     for (int year = start_year; year <= end_year; ++year) {
-        yearly_data.emplace(year, ResultContainer { width, height });
+        yearly_data.emplace(year, ResultContainer { nrows, ncols });
     }
-    ResultContainer overall_result(width, height);
+    ResultContainer overall_result(nrows, ncols);
     if (use_cache) {
         overall_result.result_if_exists = db.result_exists(index, threshold, start_year, end_year, choices);
         for (auto& [year, data] : yearly_data) {
@@ -173,6 +179,7 @@ void single_image_summary(
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             fs::path index_path;
+            fs::path template_path;
             // Provide the option to skip the computation if we don't have any data
             std::vector<std::string> approx_data;
             std::visit(
@@ -192,11 +199,12 @@ void single_image_summary(
             if (missing_files(approx_data, index) || fs::exists(index_path / index_name))
                 return;
             else
-                compute_index(index_path, index);
+                compute_index(index_path, folder / "viewZenithMean.tif", index);
         });
 
     int num_dates_used_for_analysis = 0;
-    std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
+    std::vector<std::string> paths_used_in_analysis;
+    std::for_each(folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             auto date = date_time::from_simple_string(folder.filename());
             if (date.year() < start_year || date.year() > end_year) {
@@ -209,43 +217,42 @@ void single_image_summary(
                         if (!fs::exists(folder / "approximated_data" / index_name)) {
                             return;
                         }
-                        bool yearly_data_exists = yearly_data.at(
-                                                                 date_time::from_simple_string(folder.filename()).year())
-                                                      .result_if_exists.has_value();
+                        auto year_string = date_time::from_simple_string(folder.filename()).year();
+                        bool yearly_data_exists = yearly_data.at(year_string).result_if_exists.has_value();
                         bool overall_data_exists = overall_result.result_if_exists.has_value();
                         if (yearly_data_exists && overall_data_exists) {
                             return;
                         }
 
                         utils::GeoTIFF<f64> index_tiff = compute_index(
-                            folder / fs::path("approximated_data"), index);
+                            folder / fs::path("approximated_data"), folder / "viewZenithMean.tif", index);
 
                         std::lock_guard<std::mutex> lock(mutex);
+                        paths_used_in_analysis.push_back(folder / fs::path("approximated_data") / "NDVI.tif");
                         auto& data_for_year = yearly_data.at(
                             date_time::from_simple_string(folder.filename()).year());
                         if (!yearly_data_exists) {
                             // For now with the approximated data we use every pixel
-                            data_for_year.count_matrix = data_for_year.count_matrix + MatX<i32>::Ones(width, height);
-                            data_for_year.histogram_matrix = (data_for_year.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
+                            data_for_year.count_matrix = data_for_year.count_matrix + MatX<i32>::Ones(nrows, ncols);
+                            data_for_year.histogram_matrix = data_for_year.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
                         }
                         if (!overall_data_exists) {
-                            overall_result.count_matrix = overall_result.count_matrix + MatX<i32>::Ones(width, height);
-                            overall_result.histogram_matrix = (overall_result.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
+                            overall_result.count_matrix = overall_result.count_matrix + MatX<i32>::Ones(nrows, ncols);
+                            overall_result.histogram_matrix = overall_result.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
                         }
                         num_dates_used_for_analysis += 1;
                     },
                     [&](UseRealData const& choice) {
-                        bool yearly_data_exists = yearly_data.at(
-                                                                 date_time::from_simple_string(folder.filename()).year())
-                                                      .result_if_exists.has_value();
+                        auto year_string = date_time::from_simple_string(folder.filename()).year();
+                        bool yearly_data_exists = yearly_data.at(year_string).result_if_exists.has_value();
                         auto overall_data_exists = overall_result.result_if_exists.has_value();
                         if (yearly_data_exists && overall_data_exists) {
                             return;
                         }
 
-                        utils::GeoTIFF<f64> index_tiff = compute_index(folder, index);
+                        utils::GeoTIFF<f64> index_tiff = compute_index(folder, folder / "viewZenithMean.tif", index);
                         // Initially we assume that all pixels are valid
-                        MatX<bool> valid_pixels = MatX<bool>::Ones(width, height);
+                        MatX<bool> valid_pixels = MatX<bool>::Ones(nrows, ncols);
                         CloudShadowStatus status;
                         {
                             std::lock_guard<std::mutex> lock(mutex);
@@ -266,8 +273,8 @@ void single_image_summary(
                         }
                         // Any pixel that is determined to be invalid is given a value of -500, which will never be selected
                         index_tiff.values = valid_pixels.select(index_tiff.values,
-                            MatX<f64>::Constant(index_tiff.width,
-                                index_tiff.height,
+                            MatX<f64>::Constant(index_tiff.height,
+                                index_tiff.width,
                                 NO_DATA_INDICATOR));
 
                         std::lock_guard<std::mutex> lock(mutex);
@@ -275,11 +282,11 @@ void single_image_summary(
                             date_time::from_simple_string(folder.filename()).year());
                         if (!yearly_data_exists) {
                             data_for_year.count_matrix = data_for_year.count_matrix + valid_pixels.cast<i32>();
-                            data_for_year.histogram_matrix = (data_for_year.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
+                            data_for_year.histogram_matrix = data_for_year.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
                         }
                         if (!overall_data_exists) {
                             overall_result.count_matrix = overall_result.count_matrix + valid_pixels.cast<i32>();
-                            overall_result.histogram_matrix = (overall_result.histogram_matrix.array() + (index_tiff.values.array() >= threshold).cast<f64>());
+                            overall_result.histogram_matrix = overall_result.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
                         }
                         num_dates_used_for_analysis += 1;
                     } },
@@ -300,6 +307,9 @@ void single_image_summary(
 
         example_tiff.values = result.histogram_matrix;
         example_tiff.write(base_path / cache_string(id, true));
+
+        example_tiff.values = result.count_matrix.cast<f64>();
+        example_tiff.write(base_path / count_string(id));
     }
     if (overall_result.result_if_exists.has_value())
         return;
@@ -311,5 +321,8 @@ void single_image_summary(
 
     example_tiff.values = overall_result.histogram_matrix;
     example_tiff.write(base_path / cache_string(id, true));
+
+    example_tiff.values = overall_result.count_matrix.cast<f64>();
+    example_tiff.write(base_path / count_string(id));
 }
 }

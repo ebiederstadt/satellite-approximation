@@ -9,5 +9,9 @@ __all__ = [
     "detect",
     "filling_missing_portions_smooth_boundaries",
     "ConnectedComponents",
-    "find_connected_components"
+    "find_connected_components",
+    "Indices",
+    "UseApproximatedData",
+    "UseRealData",
+    "single_image_summary"
 ]

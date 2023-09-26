@@ -41,7 +41,7 @@ SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
 
     std::vector<std::string> bands;
     while (sqlite3_step(stmt_select) == SQLITE_ROW) {
-        bands.push_back(reinterpret_cast<const char*>(sqlite3_column_int(stmt_select, 0)));
+        bands.push_back(reinterpret_cast<const char*>(sqlite3_column_text(stmt_select, 0)));
     }
 
     return bands;

@@ -8,6 +8,7 @@
 
 #include <cloud_shadow_detection/automatic_detection.h>
 #include <spatial_approximation/approx.h>
+#include <analysis/sis.h>
 
 namespace py = pybind11;
 using namespace py::literals;
@@ -75,4 +76,24 @@ PYBIND11_MODULE(_core, m) {
             .def_readonly("band_computation_status", &spatial_approximation::Status::bands_computed);
     m.def("fill_missing_data_folder", &spatial_approximation::fill_missing_data_folder,
           "base_folder"_a, "band_names"_a, "use_cache"_a, "skip_threshold"_a);
+
+    py::enum_<analysis::Indices>(m, "Indices")
+        .value("NDVI", analysis::Indices::NDVI)
+        .value("NDMI", analysis::Indices::NDMI)
+        .value("mNDWI", analysis::Indices::mNDWI)
+        .value("SWI", analysis::Indices::SWI);
+
+    py::class_<analysis::UseApproximatedData>(m, "UseApproximatedData")
+        .def(py::init<>());
+
+    py::class_<analysis::UseRealData>(m, "UseRealData")
+        .def(py::init<>())
+        .def_readwrite("exclude_cloudy_pixels", &analysis::UseRealData::exclude_cloudy_pixels)
+        .def_readwrite("exclude_shadow_pixels", &analysis::UseRealData::exclude_shadow_pixels)
+        .def("__repr__", [](analysis::UseRealData const &useRealData) {
+            return fmt::format("UseRealData: <Exclude clouds: {}, Exclude shadows: {}>", useRealData.exclude_cloudy_pixels, useRealData.exclude_shadow_pixels);
+        });
+    m.def("single_image_summary", &analysis::single_image_summary,
+        "base_path"_a, "use_cache"_a, "start_year"_a, "end_year"_a, "index"_a, "threshold"_a, "data_choices"_a);
+
 }
