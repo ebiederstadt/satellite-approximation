@@ -10,6 +10,7 @@
 #include <execution>
 #include <fmt/format.h>
 #include <magic_enum.hpp>
+#include <spdlog/stopwatch.h>
 #include <sqlite3.h>
 #include <vector>
 
@@ -177,6 +178,8 @@ void single_image_summary(
 
     auto index_name = fmt::format("{}.tif", magic_enum::enum_name(index));
 
+    int num_computed = 0;
+    spdlog::stopwatch sw;
     std::mutex mutex;
     // Compute indices in a parallel-loop (which I hope will be nice and fast :)
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
@@ -203,10 +206,13 @@ void single_image_summary(
                 return;
             else
                 compute_index(index_path, folder / "viewZenithMean.tif", index);
+            std::lock_guard<std::mutex> lock(mutex);
+            num_computed += 1;
         });
+    logger->info("Calculated {} spectral indices in {:.2f}s", num_computed, sw);
 
     int num_dates_used_for_analysis = 0;
-    std::vector<std::string> paths_used_in_analysis;
+    sw.reset();
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             auto date = date_time::from_simple_string(folder.filename());
@@ -231,7 +237,6 @@ void single_image_summary(
                             folder / fs::path("approximated_data"), folder / "viewZenithMean.tif", index);
 
                         std::lock_guard<std::mutex> lock(mutex);
-                        paths_used_in_analysis.push_back(folder / fs::path("approximated_data") / "NDVI.tif");
                         auto& data_for_year = yearly_data.at(
                             date_time::from_simple_string(folder.filename()).year());
                         if (!yearly_data_exists) {
@@ -296,7 +301,7 @@ void single_image_summary(
                 choices);
         });
 
-    logger->info("{} days used for analysis", num_dates_used_for_analysis);
+    logger->info("{} days used in analysis. Took {:.2f}s to compute", num_dates_used_for_analysis, sw);
 
     // Save the results to disk
     for (auto const& [year, result] : yearly_data) {
