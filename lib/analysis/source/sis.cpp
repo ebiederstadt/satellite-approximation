@@ -204,7 +204,7 @@ void single_image_summary(
 
     int num_dates_used_for_analysis = 0;
     std::vector<std::string> paths_used_in_analysis;
-    std::for_each(folders_to_process.begin(), folders_to_process.end(),
+    std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             auto date = date_time::from_simple_string(folder.filename());
             if (date.year() < start_year || date.year() > end_year) {
