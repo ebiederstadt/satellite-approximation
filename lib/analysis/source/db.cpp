@@ -15,7 +15,7 @@ DataBase::DataBase(fs::path const& base_path)
     if (rc != SQLITE_OK) {
         throw std::runtime_error(fmt::format("Failed to open database. Looking for file: {}", db_path.string()));
     }
-    sql = "SELECT clouds_computed, shadows_computed FROM dates WHERE date=?;";
+    sql = "SELECT clouds_computed, shadows_computed, percent_invalid FROM dates WHERE date=?;";
     rc = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
     if (rc != SQLITE_OK) {
         throw std::runtime_error("Failed to compile SQL. Error: " + std::string(sqlite3_errmsg(db)));
@@ -42,7 +42,7 @@ SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
 
     std::vector<std::string> bands;
     while (sqlite3_step(stmt_select) == SQLITE_ROW) {
-        bands.push_back(reinterpret_cast<const char*>(sqlite3_column_text(stmt_select, 0)));
+        bands.push_back(reinterpret_cast<char const*>(sqlite3_column_text(stmt_select, 0)));
     }
 
     return bands;
@@ -53,15 +53,16 @@ CloudShadowStatus DataBase::get_status(std::string date)
     sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
     int rc = sqlite3_step(stmt);
     if (rc != SQLITE_ROW) {
-        logger->error("Failed to find date of interest: {}. Ran query: {}, rc={}", date, sqlite3_expanded_sql(stmt),
-            rc);
+        logger->error(
+            "Failed to find date of interest: {}. Ran query: {}, rc={}", date, sqlite3_expanded_sql(stmt), rc);
         return {};
     }
     auto cloud_status = (bool)sqlite3_column_int(stmt, 0);
     auto shadow_status = (bool)sqlite3_column_int(stmt, 1);
+    auto percent_invalid = sqlite3_column_double(stmt, 2);
 
     sqlite3_reset(stmt);
-    return { cloud_status, shadow_status };
+    return { cloud_status, shadow_status, percent_invalid };
 }
 
 sqlite3_stmt* DataBase::prepare_stmt(

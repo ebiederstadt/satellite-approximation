@@ -266,6 +266,9 @@ void single_image_summary(
                             std::lock_guard<std::mutex> lock(mutex);
                             status = db.get_status(folder.filename().string());
                         }
+                        if (choice.skip_threshold.has_value() && status.percent_invalid >= choice.skip_threshold.value()) {
+                            return;
+                        }
                         if (choice.exclude_cloudy_pixels && status.clouds_exist) {
                             fs::path cloud_path = folder / fs::path("cloud_mask.tif");
                             utils::GeoTIFF<u8> cloud_tiff(cloud_path);

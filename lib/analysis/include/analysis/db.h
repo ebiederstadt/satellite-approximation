@@ -15,6 +15,7 @@ namespace analysis {
 struct CloudShadowStatus {
     bool clouds_exist = false;
     bool shadows_exist = false;
+    f64 percent_invalid = 0.0;
 };
 
 enum class Indices;

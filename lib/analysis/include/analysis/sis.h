@@ -22,6 +22,7 @@ struct UseApproximatedData { };
 struct UseRealData {
     bool exclude_cloudy_pixels = false;
     bool exclude_shadow_pixels = false;
+    std::optional<f64> skip_threshold;
 };
 using DataChoices = std::variant<UseApproximatedData, UseRealData>;
 
