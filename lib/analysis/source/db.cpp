@@ -195,4 +195,54 @@ RETURNING id;
     return result;
 }
 
+void DataBase::store_index_info(std::string const& date, analysis::Indices index, givde::f64 min, givde::f64 max, givde::f64 mean, analysis::DataChoices choice)
+{
+    std::string sql_string = R"sql(
+CREATE TABLE IF NOT EXISTS index_data(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    index_name STRING,
+    using_approximated_data INTEGER,
+    min REAL,
+    max REAL,
+    mean REAL,
+    date_id TEXT,
+    FOREIGN KEY(date_id) REFERENCES dates(date));
+)sql";
+    int rc = sqlite3_exec(db, sql_string.c_str(), nullptr, nullptr, nullptr);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error(
+            "Failed to create index_data table. Error: " + std::string(sqlite3_errmsg(db)));
+    }
+
+    sql_string = R"sql(
+INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, date_id)
+VALUES(?, ?, ?, ?, ?, ?)
+)sql";
+    sqlite3_stmt* stmt_insert;
+    rc = sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_insert, nullptr);
+    if (rc == SQLITE_ERROR) {
+        throw std::runtime_error("Failed to compile statement. Error: " + std::string(sqlite3_errmsg(db)));
+    }
+    auto index_name = magic_enum::enum_name(index);
+    sqlite3_bind_text(stmt_insert, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
+    std::visit(Visitor {
+                   [&](UseApproximatedData) {
+                       sqlite3_bind_int(stmt_insert, 2, (int)true);
+                   },
+                   [&](UseRealData) {
+                       sqlite3_bind_int(stmt_insert, 2, (int)false);
+                   } },
+        choice);
+    sqlite3_bind_double(stmt_insert, 3, min);
+    sqlite3_bind_double(stmt_insert, 4, max);
+    sqlite3_bind_double(stmt_insert, 5, mean);
+    sqlite3_bind_text(stmt_insert, 6, date.c_str(), (int)date.length(), SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt_insert);
+
+    sqlite3_finalize(stmt_insert);
+    if (rc != SQLITE_DONE) {
+        throw std::runtime_error("Failed to insert data into index_data table. Error: " + std::string(sqlite3_errmsg(db)));
+    }
+}
 }

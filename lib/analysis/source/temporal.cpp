@@ -1,6 +1,6 @@
 #include "analysis/temporal.h"
-#include "analysis/utils.h"
 #include "analysis/db.h"
+#include "analysis/utils.h"
 #include "utils/log.h"
 
 #include <execution>
@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 static auto logger = utils::create_logger("analysis::temporal");
 
 namespace analysis {
-void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, Indices index, DataBase &db, DataChoices choices)
+void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, Indices index, DataBase& db, DataChoices choices)
 {
     int num_computed = 0;
     auto index_name = fmt::format("{}.tif", magic_enum::enum_name(index));
@@ -40,13 +40,15 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
                     } },
                 choices);
 
-            // Don't bother to compute if we are missing files, or if the index already exists
+            // Don't bother to compute if we are missing files required for computation, or if the index already exists
             if (missing_files(approx_data, index) || fs::exists(index_path / index_name))
                 return;
-            else
-                compute_index(index_path, folder / "viewZenithMean.tif", index);
-            std::lock_guard<std::mutex> lock(mutex);
-            num_computed += 1;
+            else {
+                utils::GeoTIFF<f64> result = compute_index(index_path, folder / "viewZenithMean.tif", index);
+                std::lock_guard<std::mutex> lock(mutex);
+                db.store_index_info(folder.filename().string(), index, result.values.minCoeff(), result.values.maxCoeff(), result.values.mean(), choices);
+                num_computed += 1;
+            }
         });
     logger->info("Calculated {} spectral indices in {:.2f}s", num_computed, sw);
 }

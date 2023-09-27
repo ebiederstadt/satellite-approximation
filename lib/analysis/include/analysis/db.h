@@ -6,8 +6,8 @@
 #include <sqlite3.h>
 #include <variant>
 
-#include "noCopying.h"
 #include "forward.h"
+#include "noCopying.h"
 
 namespace fs = std::filesystem;
 using namespace givde;
@@ -46,6 +46,8 @@ public:
         f64 max,
         f64 mean,
         int num_days_used);
+
+    void store_index_info(std::string const& date, Indices index, f64 min, f64 max, f64 mean, DataChoices choice);
 
 private:
     sqlite3* db;
