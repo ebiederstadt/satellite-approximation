@@ -48,7 +48,8 @@ public:
         DataChoices choice,
         f64 min,
         f64 max,
-        f64 mean);
+        f64 mean,
+        int num_days_used);
 
 private:
     sqlite3* db;

@@ -93,6 +93,7 @@ struct ResultContainer {
     MatX<i32> count_matrix;
     // If the result already exists on disk
     std::optional<int> result_if_exists;
+    int num_days_used = 0;
 };
 
 std::string cache_string(int id, bool use_raw_data)
@@ -243,10 +244,12 @@ void single_image_summary(
                             // For now with the approximated data we use every pixel
                             data_for_year.count_matrix = data_for_year.count_matrix + MatX<i32>::Ones(nrows, ncols);
                             data_for_year.histogram_matrix = data_for_year.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
+                            data_for_year.num_days_used += 1;
                         }
                         if (!overall_data_exists) {
                             overall_result.count_matrix = overall_result.count_matrix + MatX<i32>::Ones(nrows, ncols);
                             overall_result.histogram_matrix = overall_result.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
+                            overall_result.num_days_used += 1;
                         }
                         num_dates_used_for_analysis += 1;
                     },
@@ -294,10 +297,12 @@ void single_image_summary(
                         if (!yearly_data_exists) {
                             data_for_year.count_matrix = data_for_year.count_matrix + valid_pixels.cast<i32>();
                             data_for_year.histogram_matrix = data_for_year.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
+                            data_for_year.num_days_used += 1;
                         }
                         if (!overall_data_exists) {
                             overall_result.count_matrix = overall_result.count_matrix + valid_pixels.cast<i32>();
                             overall_result.histogram_matrix = overall_result.histogram_matrix + MatX<f64>((index_tiff.values.array() >= threshold).cast<f64>());
+                            overall_result.num_days_used += 1;
                         }
                         num_dates_used_for_analysis += 1;
                     } },
@@ -313,7 +318,7 @@ void single_image_summary(
 
         MatX<f64> percent = (result.histogram_matrix.array() / result.count_matrix.cast<f64>().array());
         example_tiff.values = percent;
-        int id = db.save_result_in_table(index, threshold, year, year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean());
+        int id = db.save_result_in_table(index, threshold, year, year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean(), result.num_days_used);
         example_tiff.write(base_path / fs::path(cache_string(id, false)));
 
         example_tiff.values = result.histogram_matrix;
@@ -327,7 +332,7 @@ void single_image_summary(
 
     MatX<f64> percent = (overall_result.histogram_matrix.array() / overall_result.count_matrix.cast<f64>().array());
     example_tiff.values = percent;
-    int id = db.save_result_in_table(index, threshold, start_year, end_year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean());
+    int id = db.save_result_in_table(index, threshold, start_year, end_year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean(), overall_result.num_days_used);
     example_tiff.write(base_path / fs::path(cache_string(id, false)));
 
     example_tiff.values = overall_result.histogram_matrix;
