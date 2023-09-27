@@ -310,7 +310,7 @@ void single_image_summary(
 
         MatX<f64> percent = (result.histogram_matrix.array() / result.count_matrix.cast<f64>().array());
         example_tiff.values = percent;
-        int id = db.save_result_in_table(index, threshold, year, year, choices);
+        int id = db.save_result_in_table(index, threshold, year, year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean());
         example_tiff.write(base_path / fs::path(cache_string(id, false)));
 
         example_tiff.values = result.histogram_matrix;
@@ -324,7 +324,7 @@ void single_image_summary(
 
     MatX<f64> percent = (overall_result.histogram_matrix.array() / overall_result.count_matrix.cast<f64>().array());
     example_tiff.values = percent;
-    int id = db.save_result_in_table(index, threshold, start_year, end_year, choices);
+    int id = db.save_result_in_table(index, threshold, start_year, end_year, choices, percent.minCoeff(), percent.maxCoeff(), percent.mean());
     example_tiff.write(base_path / fs::path(cache_string(id, false)));
 
     example_tiff.values = overall_result.histogram_matrix;

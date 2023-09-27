@@ -112,7 +112,10 @@ CREATE TABLE IF NOT EXISTS single_image_summary(
     end_year INTEGER,
     use_approximated_data INTEGER,
     exclude_cloudy_pixels INTEGER,
-    exclude_shadow_pixels INTEGER);
+    exclude_shadow_pixels INTEGER,
+    min REAL,
+    max REAL,
+    mean REAL);
 )sql";
     int rc = sqlite3_exec(db, sql_create.c_str(), nullptr, nullptr, nullptr);
     if (rc != SQLITE_OK) {
@@ -156,16 +159,22 @@ int DataBase::save_result_in_table(
     f64 threshold,
     int start_year,
     int end_year,
-    DataChoices choice)
+    DataChoices choice,
+    f64 min,
+    f64 max,
+    f64 mean)
 {
     create_sis_table();
 
     std::string sql_insert = R"sql(
-INSERT INTO single_image_summary (index_name, threshold, start_year, end_year, use_approximated_data, exclude_cloudy_pixels, exclude_shadow_pixels)
-VALUES(?, ?, ?, ?, ?, ?, ?)
+INSERT INTO single_image_summary (index_name, threshold, start_year, end_year, use_approximated_data, exclude_cloudy_pixels, exclude_shadow_pixels, min, max, mean)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 )sql";
     sqlite3_stmt* stmt_insert = prepare_stmt(sql_insert, index, threshold, start_year, end_year, choice);
+    sqlite3_bind_double(stmt_insert, 8, min);
+    sqlite3_bind_double(stmt_insert, 9, max);
+    sqlite3_bind_double(stmt_insert, 10, mean);
 
     int rc = sqlite3_step(stmt_insert);
     int result = -1;

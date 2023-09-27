@@ -44,7 +44,10 @@ public:
         f64 threshold,
         int start_year,
         int end_year,
-        DataChoices choice);
+        DataChoices choice,
+        f64 min,
+        f64 max,
+        f64 mean);
 
 private:
     sqlite3* db;
