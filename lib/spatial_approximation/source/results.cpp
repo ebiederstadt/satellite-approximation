@@ -1,16 +1,15 @@
 #include "spatial_approximation/results.h"
 #include "spatial_approximation/approx.h"
 #include "utils/fmt_filesystem.h"
-#include "utils/"
+#include "utils/log.h"
 
 #include <iostream>
-#include <spdlog/spdlog.h>
 #include <sqlite3.h>
 
-auto logger = spdlog::get("main");
+auto logger = utils::create_logger("spatial_approximation");
 
 namespace spatial_approximation {
-bool write_results_to_db(fs::path const& base_folder, std::unordered_map<std::string, Status> const& results)
+bool write_results_to_db(fs::path const& base_folder, std::unordered_map<utils::Date, Status> const& results)
 {
     logger->info("writing {} results to the database", base_folder);
     fs::path db_path = base_folder / fs::path("approximation.db");
@@ -27,12 +26,15 @@ bool write_results_to_db(fs::path const& base_folder, std::unordered_map<std::st
 
     std::string sql = R"sql(
 CREATE TABLE IF NOT EXISTS dates(
-    date TEXT PRIMARY KEY,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    day INTEGER NOT NULL,
     clouds_computed INTEGER,
     shadows_computed INTEGER,
     percent_cloudy REAL,
     percent_shadows REAL,
-    percent_invalid REAL);
+    percent_invalid REAL,
+    PRIMARY KEY(year, month, day));
 )sql";
     rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err_msg);
     if (rc != SQLITE_OK)
@@ -44,8 +46,10 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     band_name TEXT,
     spatial INTEGER,
     temporal INTEGER,
-    date_id STRING,
-    FOREIGN KEY(date_id) REFERENCES dates(date));
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    FOREIGN KEY(year, month, day) REFERENCES dates(year, month, day));
 )sql";
     rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err_msg);
     if (rc != SQLITE_OK)
@@ -54,36 +58,36 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     for (auto const& [date, status] : results) {
         // Insert the basic data
         sql = R"sql(
-INSERT INTO dates (date, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
-VALUES(?, ?, ?, ?, ?, ?)
+INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 )sql";
         sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
-        sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
-        sqlite3_bind_int(stmt, 2, (int)status.clouds_computed);
-        sqlite3_bind_int(stmt, 3, (int)status.shadows_computed);
-        sqlite3_bind_double(stmt, 4, status.percent_clouds);
+        int index = date.bind_sql(stmt, 1);
+        sqlite3_bind_int(stmt, index, (int)status.clouds_computed);
+        sqlite3_bind_int(stmt, index + 1, (int)status.shadows_computed);
+        sqlite3_bind_double(stmt, index + 2, status.percent_clouds);
         if (status.percent_shadows.has_value())
-            sqlite3_bind_double(stmt, 5, *status.percent_shadows);
+            sqlite3_bind_double(stmt, index+3, *status.percent_shadows);
         else
-            sqlite3_bind_null(stmt, 5);
-        sqlite3_bind_double(stmt, 6, status.percent_invalid);
+            sqlite3_bind_null(stmt, index + 3);
+        sqlite3_bind_double(stmt, index + 4, status.percent_invalid);
         rc = sqlite3_step(stmt);
         if (rc != SQLITE_DONE) {
-            logger->error("First INSERT failed: {}", sqlite3_errmsg(db));
+            logger->error("First INSERT failed: {} (Error code: {})", sqlite3_errmsg(db), rc);
             goto fail;
         }
         sqlite3_finalize(stmt);
 
         for (auto const& band : status.bands_computed) {
             sql = R"sql(
-INSERT INTO approximated_data (band_name, spatial, temporal, date_id)
-VALUES(?, ?, ?, ?)
+INSERT INTO approximated_data (band_name, spatial, temporal, year, month, day)
+VALUES(?, ?, ?, ?, ?, ?)
 )sql";
             sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
             sqlite3_bind_text(stmt, 1, band.c_str(), (int)band.length(), SQLITE_STATIC);
             sqlite3_bind_int(stmt, 2, (int)true);
             sqlite3_bind_int(stmt, 3, (int)false);
-            sqlite3_bind_text(stmt, 4, date.c_str(), (int)date.length(), SQLITE_STATIC);
+            date.bind_sql(stmt, 4);
             rc = sqlite3_step(stmt);
             if (rc != SQLITE_DONE) {
                 logger->error("Second INSERT failed: {}", sqlite3_errmsg(db));

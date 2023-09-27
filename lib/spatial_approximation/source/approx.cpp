@@ -3,6 +3,7 @@
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
+#include "utils/log.h"
 
 #include <execution>
 #include <iostream>
@@ -21,7 +22,7 @@ using Triplet = Eigen::Triplet<T>;
 using sparse_t = Eigen::SparseMatrix<f64>;
 using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
 
-static auto logger = spdlog::get("main");
+static auto logger = utils::create_logger("spatial_approximation");
 
 bool on_border(Eigen::Index row, Eigen::Index col, MatX<f64> const& image)
 {
@@ -216,7 +217,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         return;
     }
 
-    std::unordered_map<std::string, Status> results;
+    std::unordered_map<utils::Date, Status> results;
 
     std::vector<fs::path> folders_to_process;
     for (auto const& path : fs::directory_iterator(base_folder)) {
@@ -272,7 +273,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
             // Even though we are skipping spatial approximation, we still want to record stats about this date
             std::lock_guard<std::mutex> lock(mutex);
-            results.insert({ folder.filename().string(), status });
+            results.emplace(folder.filename().string(), status);
             return;
         }
         for (auto const& band : band_names) {
@@ -290,7 +291,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         }
 
         std::lock_guard<std::mutex> lock(mutex);
-        results.insert({ folder.filename().string(), status });
+        results.emplace(folder.filename().string(), status);
 
         logger->info("Finished folder: {}", folder);
     });

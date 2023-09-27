@@ -8,6 +8,7 @@
 
 #include "forward.h"
 #include "noCopying.h"
+#include "utils/date.h"
 
 namespace fs = std::filesystem;
 using namespace givde;
@@ -28,7 +29,7 @@ public:
 
     CloudShadowStatus get_status(std::string date);
 
-    std::vector<std::string> get_approximated_data(std::string date);
+    std::vector<std::string> get_approximated_data(std::string const& date_string);
 
     std::optional<int> result_exists(
         Indices index,
@@ -47,7 +48,7 @@ public:
         f64 mean,
         int num_days_used);
 
-    void store_index_info(std::string const& date, Indices index, f64 min, f64 max, f64 mean, DataChoices choice);
+    void store_index_info(std::string const& date_string, Indices index, f64 min, f64 max, f64 mean, DataChoices choice);
 
 private:
     sqlite3* db;

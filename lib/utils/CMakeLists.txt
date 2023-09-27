@@ -1,6 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(utils STATIC
+        source/date.cpp
         source/filesystem.cpp
         source/geotiff.cpp
         source/log.cpp)

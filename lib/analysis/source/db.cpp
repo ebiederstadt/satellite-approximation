@@ -15,7 +15,7 @@ DataBase::DataBase(fs::path const& base_path)
     if (rc != SQLITE_OK) {
         throw std::runtime_error(fmt::format("Failed to open database. Looking for file: {}", db_path.string()));
     }
-    sql = "SELECT clouds_computed, shadows_computed, percent_invalid FROM dates WHERE date=?;";
+    sql = "SELECT clouds_computed, shadows_computed, percent_invalid FROM dates WHERE year=? AND month=? AND day=?;";
     rc = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
     if (rc != SQLITE_OK) {
         throw std::runtime_error("Failed to compile SQL. Error: " + std::string(sqlite3_errmsg(db)));
@@ -28,8 +28,10 @@ DataBase::~DataBase()
     sqlite3_close(db);
 }
 
-std::vector<std::string> DataBase::get_approximated_data(std::string date)
+std::vector<std::string> DataBase::get_approximated_data(std::string const& date_string)
 {
+    utils::Date date(date_string);
+
     std::string sql_select = R"sql(
 SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
 )sql";
@@ -38,7 +40,7 @@ SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
     if (rc != SQLITE_OK) {
         throw std::runtime_error("Failed to compile SQL. Error: " + std::string(sqlite3_errmsg(db)));
     }
-    sqlite3_bind_text(stmt_select, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
+    date.bind_sql(stmt_select, 1);
 
     std::vector<std::string> bands;
     while (sqlite3_step(stmt_select) == SQLITE_ROW) {
@@ -48,9 +50,10 @@ SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
     return bands;
 }
 
-CloudShadowStatus DataBase::get_status(std::string date)
+CloudShadowStatus DataBase::get_status(std::string date_string)
 {
-    sqlite3_bind_text(stmt, 1, date.c_str(), (int)date.length(), SQLITE_STATIC);
+    utils::Date date(date_string);
+    date.bind_sql(stmt, 1);
     int rc = sqlite3_step(stmt);
     if (rc != SQLITE_ROW) {
         logger->error(
@@ -195,7 +198,7 @@ RETURNING id;
     return result;
 }
 
-void DataBase::store_index_info(std::string const& date, analysis::Indices index, givde::f64 min, givde::f64 max, givde::f64 mean, analysis::DataChoices choice)
+void DataBase::store_index_info(std::string const& date_string, analysis::Indices index, givde::f64 min, givde::f64 max, givde::f64 mean, analysis::DataChoices choice)
 {
     std::string sql_string = R"sql(
 CREATE TABLE IF NOT EXISTS index_data(
@@ -205,8 +208,10 @@ CREATE TABLE IF NOT EXISTS index_data(
     min REAL,
     max REAL,
     mean REAL,
-    date_id TEXT,
-    FOREIGN KEY(date_id) REFERENCES dates(date));
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    FOREIGN KEY(year, month, day) REFERENCES dates(year, month, day));
 )sql";
     int rc = sqlite3_exec(db, sql_string.c_str(), nullptr, nullptr, nullptr);
     if (rc != SQLITE_OK) {
@@ -215,8 +220,8 @@ CREATE TABLE IF NOT EXISTS index_data(
     }
 
     sql_string = R"sql(
-INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, date_id)
-VALUES(?, ?, ?, ?, ?, ?)
+INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, year, month, day)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 )sql";
     sqlite3_stmt* stmt_insert;
     rc = sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_insert, nullptr);
@@ -224,6 +229,7 @@ VALUES(?, ?, ?, ?, ?, ?)
         throw std::runtime_error("Failed to compile statement. Error: " + std::string(sqlite3_errmsg(db)));
     }
     auto index_name = magic_enum::enum_name(index);
+    utils::Date date(date_string);
     sqlite3_bind_text(stmt_insert, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
     std::visit(Visitor {
                    [&](UseApproximatedData) {
@@ -236,7 +242,7 @@ VALUES(?, ?, ?, ?, ?, ?)
     sqlite3_bind_double(stmt_insert, 3, min);
     sqlite3_bind_double(stmt_insert, 4, max);
     sqlite3_bind_double(stmt_insert, 5, mean);
-    sqlite3_bind_text(stmt_insert, 6, date.c_str(), (int)date.length(), SQLITE_STATIC);
+    date.bind_sql(stmt_insert, 6);
 
     rc = sqlite3_step(stmt_insert);
 
