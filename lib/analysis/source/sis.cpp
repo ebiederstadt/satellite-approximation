@@ -1,5 +1,6 @@
 #include "analysis/sis.h"
 #include "analysis/db.h"
+#include "analysis/temporal.h"
 #include "analysis/utils.h"
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
@@ -19,67 +20,6 @@ namespace date_time = boost::gregorian;
 static auto logger = utils::create_logger("analysis:SIS");
 
 namespace analysis {
-utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index)
-{
-    auto tiff_name = fmt::format("{}.tif", magic_enum::enum_name(index));
-    fs::path tiff_path = folder / fs::path(tiff_name);
-    if (fs::exists(tiff_path)) {
-        return { tiff_path };
-    }
-
-    // Compute the result of (a - b) / (a + b), where 0 / 0 = 0
-    // Also stores the result to the disk
-    auto normalized_computation = [&](MatX<f64> const& a, MatX<f64> const& b) {
-        utils::GeoTIFF<f64> result(template_path);
-        MatX<f64> computation = (a.array() - b.array()) / (a.array() + b.array());
-        computation = computation.unaryExpr([](f64 v) { return std::isfinite(v) ? v : 0.0; });
-        result.values = computation;
-        result.write(tiff_path, template_path);
-        return result;
-    };
-
-    auto compute_swi = [&folder, &tiff_path]() {
-        auto green = utils::GeoTIFF<f64> { folder / "B03.tif" };
-        auto swir = utils::GeoTIFF<f64> { folder / "B11.tif" };
-        auto nir = utils::GeoTIFF<f64> { folder / "B08.tif" };
-
-        fs::path tiff_template = folder / "B04.tif";
-        auto result = utils::GeoTIFF<f64>(tiff_template);
-        auto denominator = (green.values.array() + nir.values.array()) * (nir.values.array() + swir.values.array());
-        result.values = (green.values.array() * (nir.values.array() - swir.values.array()) / denominator);
-        result.values = result.values.unaryExpr([](f64 v) { return std::isfinite(v) ? v : 0.0; });
-        result.write(tiff_path, tiff_template);
-        return result;
-    };
-
-    switch (index) {
-    case Indices::NDVI: {
-        auto nir = utils::GeoTIFF<f64> { folder / "B08.tif" };
-        auto red = utils::GeoTIFF<f64> { folder / "B04.tif" };
-        return normalized_computation(nir.values, red.values);
-    }
-    case Indices::NDMI: {
-        auto nir = utils::GeoTIFF<f64> { folder / "B08.tif" };
-        auto swir = utils::GeoTIFF<f64> { folder / "B11.tif" };
-        return normalized_computation(nir.values, swir.values);
-    }
-    case Indices::mNDWI: {
-        auto green = utils::GeoTIFF<f64> { folder / "B03.tif" };
-        auto swir = utils::GeoTIFF<f64> { folder / "B11.tif" };
-        return normalized_computation(green.values, swir.values);
-    }
-    case Indices::SWI:
-        return compute_swi();
-    default:
-        throw std::runtime_error(fmt::format("Failed to map the index: {}", magic_enum::enum_name(index)));
-    }
-}
-
-std::optional<Indices> from_str(std::string_view str)
-{
-    return magic_enum::enum_cast<Indices>(str);
-}
-
 struct ResultContainer {
     ResultContainer(Eigen::Index rows, Eigen::Index cols)
     {
@@ -104,33 +44,6 @@ std::string cache_string(int id, bool use_raw_data)
 std::string count_string(int id)
 {
     return fmt::format("count_{}.tif", id);
-}
-
-std::vector<std::string> required_files(Indices index)
-{
-    switch (index) {
-    case Indices::NDVI:
-        return { "B08", "B04" };
-    case Indices::NDMI:
-        return { "B08", "B11" };
-    case Indices::mNDWI:
-        return { "B03", "B11" };
-    case Indices::SWI:
-        return { "B03", "B08", "B11" };
-    default:
-        throw std::runtime_error(fmt::format("Failed to handle case for {}", magic_enum::enum_name(index)));
-    }
-}
-
-// Check to see if we are missing any of the required files for computation
-bool missing_files(std::vector<std::string> const& files, Indices index)
-{
-    auto necessary_files = required_files(index);
-    bool files_missing = false;
-    for (auto const& file : necessary_files) {
-        files_missing |= !contains(files, file);
-    }
-    return files_missing;
 }
 
 void single_image_summary(
@@ -179,41 +92,11 @@ void single_image_summary(
 
     auto index_name = fmt::format("{}.tif", magic_enum::enum_name(index));
 
-    int num_computed = 0;
-    spdlog::stopwatch sw;
-    std::mutex mutex;
-    // Compute indices in a parallel-loop (which I hope will be nice and fast :)
-    std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
-        [&](auto&& folder) {
-            fs::path index_path;
-            fs::path template_path;
-            // Provide the option to skip the computation if we don't have any data
-            std::vector<std::string> approx_data;
-            std::visit(
-                Visitor {
-                    [&](UseApproximatedData const&) {
-                        index_path = folder / fs::path("approximated_data");
-                        std::lock_guard<std::mutex> lock(mutex);
-                        approx_data = db.get_approximated_data(folder.filename().string());
-                    },
-                    [&](auto) {
-                        index_path = folder;
-                        approx_data = required_files(index);
-                    } },
-                choices);
-
-            // Don't bother to compute if we are missing files, or if the index already exists
-            if (missing_files(approx_data, index) || fs::exists(index_path / index_name))
-                return;
-            else
-                compute_index(index_path, folder / "viewZenithMean.tif", index);
-            std::lock_guard<std::mutex> lock(mutex);
-            num_computed += 1;
-        });
-    logger->info("Calculated {} spectral indices in {:.2f}s", num_computed, sw);
+    compute_indices_for_all_dates(folders_to_process, index, db, choices);
 
     int num_dates_used_for_analysis = 0;
-    sw.reset();
+    spdlog::stopwatch sw;
+    std::mutex mutex;
     std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(),
         [&](auto&& folder) {
             auto date = date_time::from_simple_string(folder.filename());

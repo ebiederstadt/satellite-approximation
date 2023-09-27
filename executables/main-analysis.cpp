@@ -1,4 +1,5 @@
 #include <analysis/sis.h>
+#include <analysis/utils.h>
 #include <filesystem>
 #include <gdal/gdal_priv.h>
 #include <spdlog/spdlog.h>
@@ -30,10 +31,14 @@ int main(int argc, char** argv)
     }
     auto index = index_or_none.value();
     f64 threshold = std::stod(argv[5]);
-    analysis::DataChoices data_choices = analysis::UseRealData{};
+    analysis::DataChoices data_choices = analysis::UseRealData {
+        .exclude_cloudy_pixels = true,
+        .exclude_shadow_pixels = true,
+        .skip_threshold = 0.8
+    };
 
     spdlog::set_level(spdlog::level::debug);
     GDALAllRegister();
 
-    analysis::single_image_summary(base_folder, false, start_year, end_year, index, threshold, data_choices);
+    analysis::single_image_summary(base_folder, true, start_year, end_year, index, threshold, data_choices);
 }

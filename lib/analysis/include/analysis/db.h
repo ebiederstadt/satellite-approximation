@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "noCopying.h"
+#include "forward.h"
 
 namespace fs = std::filesystem;
 using namespace givde;
@@ -17,11 +18,6 @@ struct CloudShadowStatus {
     bool shadows_exist = false;
     f64 percent_invalid = 0.0;
 };
-
-enum class Indices;
-struct UseApproximatedData;
-struct UseRealData;
-using DataChoices = std::variant<UseApproximatedData, UseRealData>;
 
 class DataBase {
     MAKE_NONCOPYABLE(DataBase);
