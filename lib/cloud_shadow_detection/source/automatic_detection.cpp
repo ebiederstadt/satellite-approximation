@@ -5,7 +5,6 @@
 
 #include <boost/regex.hpp>
 #include <fmt/format.h>
-#include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 
 #include "cloud_shadow_detection/Functions.h"
@@ -37,6 +36,8 @@ static constexpr float DistanceToSun = 1.5e9f;
 static constexpr float DistanceToView = 785.f;
 static constexpr float ProbabilityFunctionThreshold = .15f;
 
+static auto logger = utils::create_logger("cloud_shadow_detection::automatic_detection");
+
 fs::path CloudParams::cloud_path() const
 {
     return nir_path.parent_path() / "cloud_mask.tif";
@@ -66,7 +67,8 @@ f32 get_diagonal_distance(f64 min_long, f64 min_lat, f64 max_long, f64 max_lat)
 
 void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)
 {
-    if (use_cache && fs::exists(params.cloud_path())) {
+    if (use_cache && fs::exists(params.cloud_path()) && fs::exists(params.shadow_path())) {
+        logger->debug("Skipping {} because both the clouds and the shadows have been computed", params.cloud_path().parent_path());
         return;
     }
 
@@ -105,7 +107,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         throw std::runtime_error(fmt::format("Failed to open SCL file. Provided path: {}", params.scl_path));
     }
 
-    spdlog::debug(" --- Cloud Detection...");
+    logger->debug(" --- Cloud Detection...");
     GenerateCloudMaskReturn generated_cloud_mask
         = GenerateCloudMask(data_CLP, data_CLD, data_SCL);
     std::shared_ptr<ImageFloat>& BlendedCloudProbability
@@ -127,18 +129,19 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     if (skipShadowDetection.decision) {
         f64 percent = static_cast<f64>(output_CM->cast<int>().sum()) / static_cast<f64>(output_CM->size());
         if (percent >= skipShadowDetection.threshold) {
+            logger->debug("Skipping {} because too much of the image is cloudy ({:.2f}% cloudy)", params.cloud_path().parent_path(), percent * 100);
             return;
         }
     }
 
-    spdlog::debug(" --- Cloud Partitioning...");
+    logger->debug(" --- Cloud Partitioning...");
     // Using the Cloud mask, partition it into individual clouds with collections and a map
     PartitionCloudMaskReturn PartitionCloudMask_Return
         = PartitionCloudMask(output_CM, diagonal_distance, MinimimumCloudSizeForRayCasting);
     CloudQuads& Clouds = PartitionCloudMask_Return.clouds;
     std::shared_ptr<ImageInt>& CloudsMap = PartitionCloudMask_Return.map;
 
-    spdlog::debug(" --- Potential Shadow Mask Generation...");
+    logger->debug(" --- Potential Shadow Mask Generation...");
     // Generate the Candidate (or Potential) Shadow Mask
     PotentialShadowMaskGenerationReturn GeneratePotentialShadowMask_Return
         = GeneratePotentialShadowMask(data_NIR, output_CM, data_SCL);
@@ -179,7 +182,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
             fmt::format("Failed to open View Azimuth file. Provided path: {}", params.view_azimuth_path));
     }
 
-    spdlog::debug(" --- Solving for Sun and Satellite Position...");
+    logger->debug(" --- Solving for Sun and Satellite Position...");
     // Generate a Vector grid for each
     std::shared_ptr<VectorGrid> SunVectorGrid
         = GenerateVectorGrid(toRadians(data_SunZenith), toRadians(data_SunAzimuth));
@@ -192,7 +195,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         = LSPointEqualTo(ViewVectorGrid, diagonal_distance, DistanceToView);
     glm::vec3& ViewPosition = ViewLSPointEqualTo_Return.p;
 
-    spdlog::debug(" --- Object-based Shadow Mask Generation...");
+    logger->debug(" --- Object-based Shadow Mask Generation...");
     // Solve for the optimal shadow matching results per cloud
     MatchCloudsShadowsResults MatchCloudsShadows_Return = MatchCloudsShadows(
         Clouds, CloudsMap, output_CM, output_PSM, diagonal_distance, SunPosition, ViewPosition);
@@ -201,7 +204,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     ShadowQuads& CloudCastedShadows = MatchCloudsShadows_Return.shadows;
     std::shared_ptr<ImageBool>& output_OSM = MatchCloudsShadows_Return.shadowMask;
 
-    spdlog::debug(" --- Generating Probability Function...");
+    logger->debug(" --- Generating Probability Function...");
     // Generate the Alpha and Beta maps to produce the probability surface
     std::shared_ptr<ImageFloat> output_Alpha = ProbabilityRefinement::AlphaMap(DeltaNIR);
     std::shared_ptr<ImageFloat> output_Beta = ProbabilityRefinement::BetaMap(
@@ -214,7 +217,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     UniformProbabilitySurface ProbabilityFunction
         = ProbabilityMap(output_OSM, output_Alpha, output_Beta);
 
-    spdlog::debug(" --- Final Shadow Mask Generation...");
+    logger->debug(" --- Final Shadow Mask Generation...");
     std::shared_ptr<ImageBool> output_FSM = ImprovedShadowMask(
         output_OSM,
         output_CM,
@@ -222,9 +225,9 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         output_Beta,
         ProbabilityFunction,
         ProbabilityFunctionThreshold);
-    spdlog::debug("...Finished Algorithm.");
+    logger->debug("...Finished Algorithm.");
 
-    spdlog::debug("Saving shadow results");
+    logger->debug("Saving shadow results");
     try {
         template_geotiff.values = output_PSM->cast<u8>();
         template_geotiff.values.colwise().reverseInPlace();
@@ -266,7 +269,7 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
         }
     }
 
-    spdlog::debug("Starting calculation");
+    logger->debug("Starting calculation");
     spdlog::stopwatch sw;
     for (auto const& directory : directories) {
         // Handle CTRL+C in our application
@@ -274,7 +277,7 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
             throw py::error_already_set();
         }
 
-        spdlog::info("Calculating for {}", directory.filename());
+        logger->info("Calculating for {}", directory.filename());
         CloudParams params;
         params.nir_path = directory / fs::path("B08.tif");
         params.clp_path = directory / fs::path("CLP.tif");
@@ -288,7 +291,7 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
 
         detect(params, diagonal_distance, skipShadowDetection, use_cache);
     }
-    spdlog::info("Finished computing");
-    spdlog::debug("Finished in {}", sw);
+    logger->info("Finished computing");
+    logger->debug("Finished in {}", sw);
 }
 }
