@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     for (auto const& [date, status] : results) {
         // Insert the basic data
         sql = R"sql(
-INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
+INSERT OR REPLACE INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 )sql";
         sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
@@ -67,7 +67,7 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?)
         sqlite3_bind_int(stmt, index + 1, (int)status.shadows_computed);
         sqlite3_bind_double(stmt, index + 2, status.percent_clouds);
         if (status.percent_shadows.has_value())
-            sqlite3_bind_double(stmt, index+3, *status.percent_shadows);
+            sqlite3_bind_double(stmt, index + 3, *status.percent_shadows);
         else
             sqlite3_bind_null(stmt, index + 3);
         sqlite3_bind_double(stmt, index + 4, status.percent_invalid);
@@ -80,7 +80,7 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 
         for (auto const& band : status.bands_computed) {
             sql = R"sql(
-INSERT INTO approximated_data (band_name, spatial, temporal, year, month, day)
+INSERT OR REPLACE INTO approximated_data (band_name, spatial, temporal, year, month, day)
 VALUES(?, ?, ?, ?, ?, ?)
 )sql";
             sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
