@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-#include "utils/geotiff.h"
+#include <utils/geotiff.h>
 
 namespace fs = std::filesystem;
 using namespace givde;
@@ -45,4 +45,6 @@ std::vector<std::string> required_files(Indices index);
 bool missing_files(std::vector<std::string> const& files, Indices index);
 
 utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index);
+
+VecX<f64> selectMatrixElements(MatX<f64> const &matrix, f64 removalValue);
 }

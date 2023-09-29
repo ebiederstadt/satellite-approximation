@@ -90,4 +90,22 @@ utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& templa
         throw std::runtime_error(fmt::format("Failed to map the index: {}", magic_enum::enum_name(index)));
     }
 }
+
+// https://stackoverflow.com/questions/69453972/get-all-non-zero-values-of-a-dense-eigenmatrix-object
+VecX<f64> selectMatrixElements(MatX<f64> const& matrix, f64 removalValue)
+{
+    auto const size = matrix.size();
+    // create 1D view
+    auto const view = matrix.reshaped().transpose();
+    // create boolean markers for nonzeros
+    auto const mask = view.array() != removalValue;
+    // create index list and set useless elements to sentinel value
+    auto constexpr sentinel = std::numeric_limits<int>::lowest();
+    auto idxs = mask.select(Eigen::RowVectorXi::LinSpaced(size, 0, size), sentinel).eval();
+    // sort to remove sentinel values
+    std::partial_sort(idxs.begin(), idxs.begin() + size, idxs.end(), std::greater {});
+    idxs.conservativeResize(mask.count());
+    VecX<f64> newVector = view(idxs.reverse()).eval();
+    return newVector;
+}
 }

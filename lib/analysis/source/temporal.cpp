@@ -27,6 +27,7 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
             fs::path template_path;
             // Provide the option to skip the computation if we don't have any data
             std::vector<std::string> approx_data;
+            std::optional<MatX<bool>> valid_pixels;
             std::visit(
                 Visitor {
                     [&](UseApproximatedData const&) {
@@ -34,9 +35,29 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
                         std::lock_guard<std::mutex> lock(mutex);
                         approx_data = db.get_approximated_data(folder.filename().string());
                     },
-                    [&](auto) {
+                    [&](UseRealData const& choice) {
                         index_path = folder;
                         approx_data = required_files(index);
+                        if (choice.exclude_cloudy_pixels) {
+                            fs::path cloud_path = folder / fs::path("cloud_mask.tif");
+                            utils::GeoTIFF<u8> cloud_tiff(cloud_path);
+                            // The valid pixels are the pixels that are not cloudy
+                            valid_pixels = !cloud_tiff.values.cast<bool>().array();
+                        }
+                        if (choice.exclude_shadow_pixels) {
+                            fs::path shadow_path = folder / fs::path("shadow_mask.tif");
+                            CloudShadowStatus status;
+                            {
+                                std::lock_guard<std::mutex> lock(mutex);
+                                status = db.get_status(folder.filename().string());
+                            }
+                            if (status.shadows_exist) {
+                                utils::GeoTIFF<u8> shadow_tiff(shadow_path);
+                                // The valid pixels are the pixels that are not covered with shadows,
+                                // and that were valid before (prevents from overwriting cloud pixels)
+                                valid_pixels = (valid_pixels->array() && !shadow_tiff.values.cast<bool>().array());
+                            }
+                        }
                     } },
                 choices);
 
@@ -46,7 +67,10 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
             else {
                 utils::GeoTIFF<f64> result = compute_index(index_path, folder / "viewZenithMean.tif", index);
                 std::lock_guard<std::mutex> lock(mutex);
-                db.store_index_info(folder.filename().string(), index, result.values.minCoeff(), result.values.maxCoeff(), result.values.mean(), choices);
+                db.store_index_info(folder.filename().string(), index, result.values, choices);
+                if (valid_pixels.has_value()) {
+                    db.store_index_info(folder.filename().string(), index, result.values, *valid_pixels, std::get<UseRealData>(choices));
+                }
                 num_computed += 1;
             }
         });

@@ -48,7 +48,8 @@ public:
         f64 mean,
         int num_days_used);
 
-    void store_index_info(std::string const& date_string, Indices index, f64 min, f64 max, f64 mean, DataChoices choice);
+    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const &index_matrix, DataChoices choice);
+    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const &index_matrix, MatX<bool> const &invalid_matrix, UseRealData choice);
 
 private:
     sqlite3* db;
@@ -64,5 +65,7 @@ private:
         int start_year,
         int end_year,
         DataChoices choice);
+
+    int index_table_helper(std::string const& date_string, Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, sqlite3_stmt**);
 };
 }

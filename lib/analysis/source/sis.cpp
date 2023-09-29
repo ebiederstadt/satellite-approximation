@@ -17,7 +17,7 @@
 
 namespace date_time = boost::gregorian;
 
-static auto logger = utils::create_logger("analysis:SIS");
+static auto logger = utils::create_logger("analysis::SIS");
 
 namespace analysis {
 struct ResultContainer {

@@ -2,8 +2,10 @@
 
 #pragma once
 
+#include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 
+#include <filesystem>
 #include <gdal/gdal_priv.h>
 #include <givde/types.hpp>
 #include <spdlog/spdlog.h>
@@ -11,6 +13,7 @@
 #include <type_traits>
 
 using namespace givde;
+namespace fs = std::filesystem;
 
 namespace utils {
 class GDALDatasetWrapper {
@@ -78,6 +81,29 @@ struct Domain {
     T end;
 };
 
+class IOError : public std::exception {
+public:
+    IOError(std::string_view msg, fs::path path)
+        : m_message(msg.data())
+        , m_path(path)
+    {
+    }
+
+    char const* what() const noexcept override
+    {
+        return m_message.c_str();
+    }
+
+    fs::path path() const
+    {
+        return m_path;
+    }
+
+private:
+    std::string m_message;
+    fs::path m_path;
+};
+
 //------------------------------------------------------------------------------
 // Useful references:
 // https://gdal.org/tutorials/geotransforms_tut.html#geotransforms-tut
@@ -122,7 +148,7 @@ public:
         }
 
         if (dataset->GetGeoTransform(geoTransform) != CE_None) {
-            throw std::runtime_error("Unable to load the geo transformation information (file: " + path + ")");
+            throw IOError("Unable to load the geo transformation information", fs::path(path));
         }
 
         // Grab their current bounding coordinates

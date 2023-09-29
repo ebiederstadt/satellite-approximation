@@ -8,7 +8,7 @@
 
 namespace analysis {
 DataBase::DataBase(fs::path const& base_path)
-    : logger(spdlog::get("analysis::DB"))
+    : logger(utils::create_logger("analysis::DB"))
 {
     fs::path db_path = base_path / fs::path("approximation.db");
     int rc = sqlite3_open(db_path.c_str(), &db);
@@ -33,7 +33,7 @@ std::vector<std::string> DataBase::get_approximated_data(std::string const& date
     utils::Date date(date_string);
 
     std::string sql_select = R"sql(
-SELECT band_name FROM approximated_data WHERE date_id=? AND spatial=1
+SELECT band_name FROM approximated_data WHERE year=? AND month=? AND day=? AND spatial=1
 )sql";
     sqlite3_stmt* stmt_select;
     int rc = sqlite3_prepare_v2(db, sql_select.c_str(), (int)sql_select.length(), &stmt_select, nullptr);
@@ -198,16 +198,19 @@ RETURNING id;
     return result;
 }
 
-void DataBase::store_index_info(std::string const& date_string, analysis::Indices index, givde::f64 min, givde::f64 max, givde::f64 mean, analysis::DataChoices choice)
+int DataBase::index_table_helper(std::string const& date_string, Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, sqlite3_stmt** stmt_insert)
 {
     std::string sql_string = R"sql(
 CREATE TABLE IF NOT EXISTS index_data(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     index_name STRING,
     using_approximated_data INTEGER,
+    exclude_cloudy_pixels INTEGER,
+    exclude_shadow_pixels INTEGER,
     min REAL,
     max REAL,
     mean REAL,
+    num_elements_used INTEGER,
     year INTEGER NOT NULL,
     month INTEGER NOT NULL,
     day INTEGER NOT NULL,
@@ -220,35 +223,68 @@ CREATE TABLE IF NOT EXISTS index_data(
     }
 
     sql_string = R"sql(
-INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, year, month, day)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, year, month, day, num_elements_used, exclude_cloudy_pixels, exclude_shadow_pixels)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 )sql";
-    sqlite3_stmt* stmt_insert;
-    rc = sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_insert, nullptr);
+    rc = sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &(*stmt_insert), nullptr);
     if (rc == SQLITE_ERROR) {
         throw std::runtime_error("Failed to compile statement. Error: " + std::string(sqlite3_errmsg(db)));
     }
     auto index_name = magic_enum::enum_name(index);
     utils::Date date(date_string);
-    sqlite3_bind_text(stmt_insert, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
-    std::visit(Visitor {
-                   [&](UseApproximatedData) {
-                       sqlite3_bind_int(stmt_insert, 2, (int)true);
-                   },
-                   [&](UseRealData) {
-                       sqlite3_bind_int(stmt_insert, 2, (int)false);
-                   } },
-        choice);
-    sqlite3_bind_double(stmt_insert, 3, min);
-    sqlite3_bind_double(stmt_insert, 4, max);
-    sqlite3_bind_double(stmt_insert, 5, mean);
-    date.bind_sql(stmt_insert, 6);
+    sqlite3_bind_text(*stmt_insert, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
+    sqlite3_bind_int(*stmt_insert, 2, (int)use_approx_data);
+    sqlite3_bind_double(*stmt_insert, 3, min);
+    sqlite3_bind_double(*stmt_insert, 4, max);
+    sqlite3_bind_double(*stmt_insert, 5, mean);
+    int idx = date.bind_sql(*stmt_insert, 6);
+    sqlite3_bind_int(*stmt_insert, idx, num_elements);
 
-    rc = sqlite3_step(stmt_insert);
+    return idx + 1;
+}
+
+void DataBase::store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, MatX<bool> const& valid_pixels, UseRealData choice)
+{
+    MatX<f64> masked_index = valid_pixels.select(index_matrix, MatX<f64>::Constant(index_matrix.rows(), index_matrix.cols(), NO_DATA_INDICATOR));
+    VecX<f64> selected_elements = selectMatrixElements(masked_index, NO_DATA_INDICATOR);
+    if (selected_elements.size() == 0) {
+        return;
+    }
+
+    sqlite3_stmt* stmt_insert = nullptr;
+    int idx = index_table_helper(date_string, index, selected_elements.minCoeff(), selected_elements.maxCoeff(), selected_elements.mean(), selected_elements.size(), false, &stmt_insert);
+    sqlite3_bind_int(stmt_insert, idx, choice.exclude_cloudy_pixels);
+    sqlite3_bind_int(stmt_insert, idx + 1, choice.exclude_shadow_pixels);
+
+    int rc = sqlite3_step(stmt_insert);
 
     sqlite3_finalize(stmt_insert);
     if (rc != SQLITE_DONE) {
-        throw std::runtime_error("Failed to insert data into index_data table. Error: " + std::string(sqlite3_errmsg(db)));
+        throw std::runtime_error(fmt::format("Failed to insert data into index_data table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
+    }
+}
+
+void DataBase::store_index_info(std::string const& date_string, analysis::Indices index, MatX<f64> const& index_matrix, DataChoices choice)
+{
+    bool use_approx_data;
+    std::visit(Visitor {
+                   [&](UseApproximatedData) {
+                       use_approx_data = true;
+                   },
+                   [&](UseRealData) {
+                       use_approx_data = false;
+                   } },
+        choice);
+    sqlite3_stmt* stmt_insert = nullptr;
+    int idx = index_table_helper(date_string, index, index_matrix.minCoeff(), index_matrix.maxCoeff(), index_matrix.mean(), index_matrix.size(), use_approx_data, &stmt_insert);
+    sqlite3_bind_int(stmt_insert, idx, (bool)false);
+    sqlite3_bind_int(stmt_insert, idx + 1, (bool)false);
+
+    int rc = sqlite3_step(stmt_insert);
+
+    sqlite3_finalize(stmt_insert);
+    if (rc != SQLITE_DONE) {
+        throw std::runtime_error(fmt::format("Failed to insert data into index_data table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
     }
 }
 }
