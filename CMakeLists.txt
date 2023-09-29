@@ -40,6 +40,7 @@ target_link_libraries(_core PRIVATE pybind11::headers
         cloud_shadow_detection
         spatial_approximation
         analysis
+        utils
         bfg::lyra
         givdetypes::givdetypes
         tomlplusplus::tomlplusplus

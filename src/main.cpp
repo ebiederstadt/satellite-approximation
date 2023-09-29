@@ -9,6 +9,7 @@
 #include <cloud_shadow_detection/automatic_detection.h>
 #include <spatial_approximation/approx.h>
 #include <analysis/sis.h>
+#include <analysis/utils.h>
 
 namespace py = pybind11;
 using namespace py::literals;
