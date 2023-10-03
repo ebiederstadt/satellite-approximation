@@ -54,17 +54,16 @@ utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& templa
         return result;
     };
 
-    auto compute_swi = [&folder, &tiff_path]() {
+    auto compute_swi = [&] {
         auto green = utils::GeoTIFF<f64> { folder / "B03.tif" };
         auto swir = utils::GeoTIFF<f64> { folder / "B11.tif" };
         auto nir = utils::GeoTIFF<f64> { folder / "B08.tif" };
 
-        fs::path tiff_template = folder / "B04.tif";
-        auto result = utils::GeoTIFF<f64>(tiff_template);
+        auto result = utils::GeoTIFF<f64>(template_path);
         auto denominator = (green.values.array() + nir.values.array()) * (nir.values.array() + swir.values.array());
         result.values = (green.values.array() * (nir.values.array() - swir.values.array()) / denominator);
         result.values = result.values.unaryExpr([](f64 v) { return std::isfinite(v) ? v : 0.0; });
-        result.write(tiff_path, tiff_template);
+        result.write(tiff_path, template_path);
         return result;
     };
 
@@ -94,14 +93,14 @@ utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& templa
 // https://stackoverflow.com/questions/69453972/get-all-non-zero-values-of-a-dense-eigenmatrix-object
 VecX<f64> selectMatrixElements(MatX<f64> const& matrix, f64 removalValue)
 {
-    auto const size = matrix.size();
+    auto size = matrix.size();
     // create 1D view
-    auto const view = matrix.reshaped().transpose();
+    auto view = matrix.reshaped().transpose();
     // create boolean markers for nonzeros
-    auto const mask = view.array() != removalValue;
+    auto mask = view.array() != removalValue;
     // create index list and set useless elements to sentinel value
-    auto constexpr sentinel = std::numeric_limits<int>::lowest();
-    auto idxs = mask.select(Eigen::RowVectorXi::LinSpaced(size, 0, size), sentinel).eval();
+    int constexpr sentinel = std::numeric_limits<int>::lowest();
+    auto idxs = mask.select(Eigen::RowVectorXi::LinSpaced(size, 0, (int)size), sentinel).eval();
     // sort to remove sentinel values
     std::partial_sort(idxs.begin(), idxs.begin() + size, idxs.end(), std::greater {});
     idxs.conservativeResize(mask.count());
