@@ -20,7 +20,7 @@ target_link_libraries(main_cloud_detection ${libraries})
 add_executable(main_spatial_approximation main-spatial-approximation.cpp)
 target_link_libraries(main_spatial_approximation
         ${libraries}
-        spatial_approximation)
+        approx)
 
 add_executable(main_analysis main-analysis.cpp)
 target_link_libraries(main_analysis

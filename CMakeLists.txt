@@ -30,7 +30,7 @@ find_package(magic_enum REQUIRED)
 
 add_subdirectory(lib/analysis)
 add_subdirectory(lib/cloud_shadow_detection)
-add_subdirectory(lib/spatial_approximation)
+add_subdirectory(lib/approx)
 add_subdirectory(lib/utils)
 add_subdirectory(executables)
 
@@ -38,7 +38,7 @@ set(source_files src/main.cpp)
 python_add_library(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers
         cloud_shadow_detection
-        spatial_approximation
+        approx
         analysis
         utils
         bfg::lyra
@@ -62,6 +62,6 @@ enable_testing()
 find_package(doctest REQUIRED)
 add_executable(test_sentinel_data_processing tests/main.cpp)
 target_link_libraries(test_sentinel_data_processing PRIVATE
-        spatial_approximation
+        approx
         doctest::doctest
         givdetypes::givdetypes)

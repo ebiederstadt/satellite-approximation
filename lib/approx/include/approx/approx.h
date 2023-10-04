@@ -6,7 +6,7 @@
 using namespace givde;
 namespace fs = std::filesystem;
 
-namespace spatial_approximation {
+namespace approx {
 struct index_t {
     Eigen::Index row;
     Eigen::Index col;

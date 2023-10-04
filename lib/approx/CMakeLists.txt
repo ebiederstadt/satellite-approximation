@@ -1,11 +1,11 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_library(spatial_approximation STATIC
+add_library(approx STATIC
         source/approx.cpp
         source/results.cpp)
-target_include_directories(spatial_approximation PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
+target_include_directories(approx PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
-target_link_libraries(spatial_approximation PRIVATE
+target_link_libraries(approx PRIVATE
         givdetypes::givdetypes
         utils
         range-v3::range-v3

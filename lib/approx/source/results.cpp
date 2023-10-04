@@ -1,14 +1,14 @@
-#include "spatial_approximation/results.h"
-#include "spatial_approximation/approx.h"
+#include "approx/results.h"
+#include "approx/approx.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 
 #include <iostream>
 #include <sqlite3.h>
 
-auto logger = utils::create_logger("spatial_approximation");
+auto logger = utils::create_logger("approx");
 
-namespace spatial_approximation {
+namespace approx {
 bool write_results_to_db(fs::path const& base_folder, std::unordered_map<utils::Date, Status> const& results)
 {
     logger->info("writing {} results to the database", base_folder);

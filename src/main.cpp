@@ -7,7 +7,7 @@
 #include <gdal/gdal_priv.h>
 
 #include <cloud_shadow_detection/automatic_detection.h>
-#include <spatial_approximation/approx.h>
+#include <approx/approx.h>
 #include <analysis/sis.h>
 #include <analysis/utils.h>
 
@@ -62,20 +62,20 @@ PYBIND11_MODULE(_core, m) {
           "folder_path"_a, "diagonal_distance"_a, "skipShadowDetection"_a, "use_cache"_a);
 
     m.def("filling_missing_portions_smooth_boundaries", [](MatX<f64> &input_image, MatX<bool> const &invalid_pixels) {
-            spatial_approximation::fill_missing_portion_smooth_boundary(input_image, invalid_pixels);
+            approx::fill_missing_portion_smooth_boundary(input_image, invalid_pixels);
             return input_image;
         },
           "input_image"_a, "invalid_pixels"_a);
-    py::class_<spatial_approximation::ConnectedComponents>(m, "ConnectedComponents")
-            .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<spatial_approximation::index_t>>>());
+    py::class_<approx::ConnectedComponents>(m, "ConnectedComponents")
+            .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<approx::index_t>>>());
 
-    m.def("find_connected_components", &spatial_approximation::find_connected_components, "invalid_mask"_a);
+    m.def("find_connected_components", &approx::find_connected_components, "invalid_mask"_a);
 
-    py::class_<spatial_approximation::Status>(m, "Status")
-            .def_readonly("percent_clouds", &spatial_approximation::Status::percent_clouds)
-            .def_readonly("percent_shadows", &spatial_approximation::Status::percent_shadows)
-            .def_readonly("band_computation_status", &spatial_approximation::Status::bands_computed);
-    m.def("fill_missing_data_folder", &spatial_approximation::fill_missing_data_folder,
+    py::class_<approx::Status>(m, "Status")
+            .def_readonly("percent_clouds", &approx::Status::percent_clouds)
+            .def_readonly("percent_shadows", &approx::Status::percent_shadows)
+            .def_readonly("band_computation_status", &approx::Status::bands_computed);
+    m.def("fill_missing_data_folder", &approx::fill_missing_data_folder,
           "base_folder"_a, "band_names"_a, "use_cache"_a, "skip_threshold"_a);
 
     py::enum_<analysis::Indices>(m, "Indices")

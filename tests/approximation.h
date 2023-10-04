@@ -1,10 +1,10 @@
 #include <doctest/doctest.h>
 #include <givde/types.hpp>
 
-#include "spatial_approximation/approx.h"
+#include "approx/approx.h"
 
 using namespace givde;
-using namespace spatial_approximation;
+using namespace approx;
 
 TEST_CASE("Image Neighbours") {
     MatX<bool> test_image(100, 100);

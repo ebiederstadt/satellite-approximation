@@ -1,5 +1,5 @@
-#include "spatial_approximation/approx.h"
-#include "spatial_approximation/results.h"
+#include "approx/approx.h"
+#include "approx/results.h"
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
@@ -16,13 +16,13 @@
 
 using namespace ranges;
 
-namespace spatial_approximation {
+namespace approx {
 template<typename T>
 using Triplet = Eigen::Triplet<T>;
 using sparse_t = Eigen::SparseMatrix<f64>;
 using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
 
-static auto logger = utils::create_logger("spatial_approximation");
+static auto logger = utils::create_logger("approx");
 
 bool on_border(Eigen::Index row, Eigen::Index col, MatX<f64> const& image)
 {
@@ -296,6 +296,6 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         logger->info("Finished folder: {}", folder);
     });
 
-    spatial_approximation::write_results_to_db(base_folder, results);
+    write_results_to_db(base_folder, results);
 }
 }
