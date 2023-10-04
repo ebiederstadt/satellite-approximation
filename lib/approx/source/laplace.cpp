@@ -17,12 +17,7 @@
 using namespace ranges;
 
 namespace approx {
-template<typename T>
-using Triplet = Eigen::Triplet<T>;
-using sparse_t = Eigen::SparseMatrix<f64>;
-using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
-
-static auto logger = utils::create_logger("approx");
+static auto logger = utils::create_logger("approx::laplace");
 
 bool on_border(Eigen::Index row, Eigen::Index col, MatX<f64> const& image)
 {
@@ -62,13 +57,13 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
     Eigen::VectorXd b(matrix_size);
     b.setZero();
 
-    std::vector<Triplet<f64>> coefficients;
+    std::vector<triplet_t> coefficients;
 
     auto dirichlet_boundary_constraint_row = [&](Eigen::Index row, Eigen::Index col) {
         // Results in a row with [... 0 0 1 0 0 ... ]
         // And the corresponding value in the b vector: [ ... 0 0 v 0 0 ...]^T
         auto i = index(row, col); // This is producing a value that is out of bounds... I wonder why?
-        coefficients.push_back(Triplet<f64>(i, i, 1.0));
+        coefficients.emplace_back(i, i, 1.0);
         b[i] = input(row, col);
     };
 
@@ -85,10 +80,9 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
             return;
         }
         auto j = index(row2, col2);
-        coefficients.push_back(Triplet<f64>(i, j, v));
+        coefficients.emplace_back(i, j, v);
     };
 
-    // Problem comes from here!
     auto laplacian_row = [&](Eigen::Index row, Eigen::Index col) {
         // Finite difference to construct laplacian
         set_coefficient(row, col, -1, 0, 1.0);
@@ -124,78 +118,59 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
     }
 }
 
-bool within_bounds(MatX<bool> const& image, index_t index)
-{
-    return !(index.row < 0 || index.row >= image.rows() || index.col < 0 || index.col >= image.cols());
-}
+//std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col)
+//{
+//    std::queue<index_t> queue;
+//    queue.push(index_t { row, col });
+//    std::vector<index_t> connected_pixels;
+//
+//    MatX<bool> considered(invalid.rows(), invalid.cols());
+//    considered.setConstant(false);
+//
+//    while (!queue.empty()) {
+//        auto element = queue.front();
+//        queue.pop();
+//
+//        // Continue to process this pixel only if it is invalid, and it has not yet been considered, otherwise
+//        // we are duplicating work. (Makes a massive difference for larger datasets)
+//        if (invalid(element.row, element.col) && !considered(element.row, element.col)) {
+//            connected_pixels.push_back(element);
+//            auto neighbours = valid_neighbours(invalid, element);
+//            considered(element.row, element.col) = true;
+//            for (auto const& neighbour : neighbours) {
+//                if (!considered(neighbour.row, neighbour.col)) {
+//                    queue.push(neighbour);
+//                }
+//            }
+//        }
+//    }
+//
+//    return connected_pixels;
+//}
 
-std::vector<index_t> valid_neighbours(MatX<bool> const& image, index_t index)
-{
-    std::vector<index_t> retVal = { { -1, 0 },
-        { 1, 0 },
-        { 0, -1 },
-        { 0, 1 } };
-    // clang-format off
-        return retVal
-               | views::transform([&index](index_t i) { return index_t{i.row + index.row, i.col + index.col}; })
-               | view::remove_if([&image](index_t i) { return !within_bounds(image, i); })
-               | to<std::vector>();
-    // clang-format on
-}
-
-std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col)
-{
-    std::queue<index_t> queue;
-    queue.push(index_t { row, col });
-    std::vector<index_t> connected_pixels;
-
-    MatX<bool> considered(invalid.rows(), invalid.cols());
-    considered.setConstant(false);
-
-    while (!queue.empty()) {
-        auto element = queue.front();
-        queue.pop();
-
-        // Continue to process this pixel only if it is invalid, and it has not yet been considered, otherwise
-        // we are duplicating work. (Makes a massive difference for larger datasets)
-        if (invalid(element.row, element.col) && !considered(element.row, element.col)) {
-            connected_pixels.push_back(element);
-            auto neighbours = valid_neighbours(invalid, element);
-            considered(element.row, element.col) = true;
-            for (auto const& neighbour : neighbours) {
-                if (!considered(neighbour.row, neighbour.col)) {
-                    queue.push(neighbour);
-                }
-            }
-        }
-    }
-
-    return connected_pixels;
-}
-
-ConnectedComponents find_connected_components(MatX<bool> const& invalid)
-{
-    MatX<int> dataclass(invalid.rows(), invalid.cols());
-    dataclass.fill(0);
-    int highest_class = 1;
-    std::unordered_map<int, std::vector<index_t>> component_index;
-
-    for (Eigen::Index col = 0; col < invalid.cols(); ++col) {
-        for (Eigen::Index row = 0; row < invalid.rows(); ++row) {
-            // If a Pixel is invalid and does not already belong to a dataclass, then assign it a dataclass using the flood fill algorithm
-            if (invalid(row, col) && dataclass(row, col) == 0) {
-                auto connected_pixels = flood(invalid, row, col);
-                for (auto const& pixel : connected_pixels) {
-                    dataclass(pixel.row, pixel.col) = highest_class;
-                }
-                component_index.emplace(highest_class, connected_pixels);
-                highest_class += 1;
-            }
-        }
-    }
-
-    return { dataclass, component_index };
-}
+//ConnectedComponents find_connected_components(MatX<bool> const& invalid)
+//{
+//    MatX<int> dataclass(invalid.rows(), invalid.cols());
+//    dataclass.fill(0);
+//    int highest_class = 1;
+//    std::unordered_map<int, std::vector<index_t>> component_index;
+//
+//    for (Eigen::Index col = 0; col < invalid.cols(); ++col) {
+//        for (Eigen::Index row = 0; row < invalid.rows(); ++row) {
+//            // If a Pixel is invalid and does not already belong to a dataclass, then assign it a dataclass using the flood fill algorithm
+//            if (invalid(row, col) && dataclass(row, col) == 0) {
+//                auto connected_pixels = flood(invalid, row, col);
+//                for (auto const& pixel : connected_pixels) {
+//                    dataclass(pixel.row, pixel.col) = highest_class;
+//                }
+//                component_index.emplace(highest_class, connected_pixels);
+//                highest_class += 1;
+//            }
+//        }
+//    }
+//
+//    return { dataclass, component_index };
+//}
 
 void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> const& invalid_pixels)
 {

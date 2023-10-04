@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils.h"
+
 #include <filesystem>
 #include <givde/types.hpp>
 
@@ -7,16 +9,6 @@ using namespace givde;
 namespace fs = std::filesystem;
 
 namespace approx {
-struct index_t {
-    Eigen::Index row;
-    Eigen::Index col;
-
-    bool operator==(index_t other) const
-    {
-        return row == other.row && col == other.col;
-    }
-};
-
 std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col);
 std::vector<index_t> valid_neighbours(MatX<bool> const& image, index_t index);
 
