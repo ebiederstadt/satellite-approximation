@@ -1,5 +1,5 @@
 #include "approx/results.h"
-#include "approx/approx.h"
+#include "approx/laplace.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 

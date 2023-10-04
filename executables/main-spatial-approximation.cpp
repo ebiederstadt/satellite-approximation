@@ -1,6 +1,6 @@
+#include "approx/laplace.h"
 #include <filesystem>
 #include <gdal/gdal_priv.h>
-#include <approx/approx.h>
 #include <spdlog/spdlog.h>
 
 namespace fs = std::filesystem;

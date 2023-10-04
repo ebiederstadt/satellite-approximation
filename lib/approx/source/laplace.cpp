@@ -1,4 +1,4 @@
-#include "approx/approx.h"
+#include "approx/laplace.h"
 #include "approx/results.h"
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"

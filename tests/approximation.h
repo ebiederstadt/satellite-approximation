@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 #include <givde/types.hpp>
 
-#include "approx/approx.h"
+#include "approx/laplace.h"
 
 using namespace givde;
 using namespace approx;

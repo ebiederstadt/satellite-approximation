@@ -1,7 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(approx STATIC
-        source/approx.cpp
+        source/laplace.cpp
         source/results.cpp)
 target_include_directories(approx PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
