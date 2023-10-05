@@ -1,7 +1,6 @@
 #pragma once
 
-#pragma once
-
+#include "utils/error.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 
@@ -81,29 +80,6 @@ struct Domain {
     T end;
 };
 
-class IOError : public std::exception {
-public:
-    IOError(std::string_view msg, fs::path path)
-        : m_message(msg.data())
-        , m_path(path)
-    {
-    }
-
-    char const* what() const noexcept override
-    {
-        return m_message.c_str();
-    }
-
-    fs::path path() const
-    {
-        return m_path;
-    }
-
-private:
-    std::string m_message;
-    fs::path m_path;
-};
-
 //------------------------------------------------------------------------------
 // Useful references:
 // https://gdal.org/tutorials/geotransforms_tut.html#geotransforms-tut
@@ -148,7 +124,7 @@ public:
         }
 
         if (dataset->GetGeoTransform(geoTransform) != CE_None) {
-            throw IOError("Unable to load the geo transformation information", fs::path(path));
+            throw IOError("Unable to load the geo transformation information", fs::path(path), *logger);
         }
 
         // Grab their current bounding coordinates
