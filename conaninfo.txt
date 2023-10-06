@@ -1,6 +1,6 @@
 [settings]
     arch=x86_64
-    build_type=RelWithDebInfo
+    build_type=Debug
     compiler=gcc
     compiler.libcxx=libstdc++
     compiler.version=12
@@ -9,7 +9,6 @@
 [requires]
     boost/1.Y.Z
     doctest/2.Y.Z
-    eigen/3.Y.Z
     fmt/10.Y.Z
     givdetypes/0.6.1
     glm/cci.20230113
@@ -19,6 +18,7 @@
     nlohmann_json/3.Y.Z
     opencl-headers/2023.Y.Z
     opencl-icd-loader/2023.Y.Z
+    opencv/4.Y.Z
     pybind11/2.Y.Z
     range-v3/0.12.0
     spdlog/1.Y.Z
@@ -30,43 +30,52 @@
 
 [full_settings]
     arch=x86_64
-    build_type=RelWithDebInfo
+    build_type=Debug
     compiler=gcc
     compiler.libcxx=libstdc++
     compiler.version=12
     os=Linux
 
 [full_requires]
-    boost/1.82.0:d79e86182689ad8ac0cbb390d02675367bfe4e69
-    bzip2/1.0.8:9e8e1467865a298d5ee883bbdc2935251d8646e4
+    ade/0.1.2a:071470b18c728723c20969eb9ab7b271a4a0ef59
+    boost/1.82.0:1c9eb5dc621aef544cb84a0233267d0dae6a659e
+    bzip2/1.0.8:ad18e1e856ff78d73ad6f3c9a214f85abf2d0550
     cereal/1.3.2:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     doctest/2.4.11:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     eigen/3.4.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    fmt/10.1.1:aae96d22d98da75d46dede7f940c818d1b39dfc1
-    givdetypes/0.6.1:41efa58b23cd78479cbc2ea35d43c525d2a12274
+    fmt/10.1.1:e0e003fc38e6dcc03cdfbaf52057d71baa23adad
+    givdetypes/0.6.1:f9d4f626636d8c8336723127d5bb67159b6824ef
     glm/cci.20230113:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    jbig/20160605:f7f1164a1e4e557512ad029311374c0b96b354c4
-    libbacktrace/cci.20210118:418c98e6da4c0c69bbc85c38a555e4eba175c719
-    libdeflate/1.18:418c98e6da4c0c69bbc85c38a555e4eba175c719
-    libjpeg/9e:418c98e6da4c0c69bbc85c38a555e4eba175c719
-    libtiff/4.5.0:6f18abfc3eb97a2d9a676eb81705a8488a83498d
-    libwebp/1.3.1:fd08a50bf1e731457fd519fc5b594069647236fd
+    gtk/system:cc5e5ca8b619d2dffaaeae1e4924ae3ce085a8f1
+    jasper/4.0.0:f7944ee7bb4ef47f8c4a4af33b73039e8df2526f
+    jbig/20160605:f397de08023c94dd407e8a06e4ece06155873638
+    libbacktrace/cci.20210118:d13c97721d7bdc192ca6529684f2b79beeae8a7c
+    libdeflate/1.18:d13c97721d7bdc192ca6529684f2b79beeae8a7c
+    libjpeg/9e:d13c97721d7bdc192ca6529684f2b79beeae8a7c
+    libpng/1.6.39:4c328c90f20afba7214fd1730e20f318c27e7964
+    libtiff/4.5.0:931608475b54fa9d0f43540a6ece6ce26b9b12eb
+    libwebp/1.3.2:3454cb80dacb69d4c43767b23f3a486be4fc6918
     lyra/1.6.1:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     magic_enum/0.9.3:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     mp-units/0.8.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     nlohmann_json/3.11.2:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     opencl-clhpp-headers/2023.04.17:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
     opencl-headers/2023.04.17:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    opencl-icd-loader/2023.04.17:9979425a4f1d315d1e484e71546a23ff1ce6fb36
+    opencl-icd-loader/2023.04.17:d6b6539283df4e4f753d45d704f0c539b175964e
+    opencv/4.5.2:bafc8d65a690ac3305ed21013dd970a56b0986f0
+    openexr/2.5.7:b2fca95bd24fb99aefb6f28023480a238ffc1da0
+    protobuf/3.17.1:eb01790d4b467ed1e8e88579ff3251d10326e544
     pybind11/2.10.1:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    quirc/1.1:0251a987435cca6991b728c56416549e3d0c3ad9
     range-v3/0.12.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    spdlog/1.12.0:7b9a822076b243ab91b7cd1380d1323ae2ad5567
+    spdlog/1.12.0:b8dd57fda3f137f50de4179c258901b3565e92c2
     tomlplusplus/3.3.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
-    xz_utils/5.4.4:418c98e6da4c0c69bbc85c38a555e4eba175c719
-    zlib/1.3:418c98e6da4c0c69bbc85c38a555e4eba175c719
-    zstd/1.5.5:3d859ed5d19098ed43c1f1ea567c8f3ae60d1385
+    xz_utils/5.4.4:d13c97721d7bdc192ca6529684f2b79beeae8a7c
+    zlib/1.3:d13c97721d7bdc192ca6529684f2b79beeae8a7c
+    zstd/1.5.5:a323f39846aa3d854d842186765e8538851a7f92
 
 [full_options]
+    ade:fPIC=True
     boost:addr2line_location=/usr/bin/addr2line
     boost:asio_no_deprecated=False
     boost:buildid=None
@@ -144,6 +153,10 @@
     fmt:with_fmt_alias=False
     fmt:with_os_api=True
     givdetypes:with_cereal=True
+    gtk:version=2
+    jasper:fPIC=True
+    jasper:shared=False
+    jasper:with_libjpeg=libjpeg
     jbig:build_executables=True
     jbig:fPIC=True
     jbig:shared=False
@@ -153,6 +166,10 @@
     libdeflate:shared=False
     libjpeg:fPIC=True
     libjpeg:shared=False
+    libpng:api_prefix=
+    libpng:fPIC=True
+    libpng:shared=False
+    libpng:sse=True
     libtiff:cxx=True
     libtiff:fPIC=True
     libtiff:jbig=True
@@ -170,6 +187,43 @@
     libwebp:with_simd=True
     opencl-icd-loader:fPIC=True
     opencl-icd-loader:shared=False
+    opencv:contrib=False
+    opencv:cpu_baseline=None
+    opencv:cpu_dispatch=None
+    opencv:dnn=True
+    opencv:fPIC=True
+    opencv:nonfree=False
+    opencv:parallel=False
+    opencv:shared=False
+    opencv:with_ade=True
+    opencv:with_cuda=False
+    opencv:with_eigen=True
+    opencv:with_ffmpeg=False
+    opencv:with_gtk=True
+    opencv:with_imgcodec_hdr=False
+    opencv:with_imgcodec_pfm=False
+    opencv:with_imgcodec_pxm=False
+    opencv:with_imgcodec_sunraster=False
+    opencv:with_ipp=False
+    opencv:with_jpeg=libjpeg
+    opencv:with_jpeg2000=jasper
+    opencv:with_openexr=True
+    opencv:with_png=True
+    opencv:with_quirc=True
+    opencv:with_tiff=True
+    opencv:with_v4l=False
+    opencv:with_webp=False
+    openexr:fPIC=True
+    openexr:shared=False
+    protobuf:debug_suffix=True
+    protobuf:fPIC=True
+    protobuf:lite=False
+    protobuf:shared=False
+    protobuf:with_rtti=True
+    protobuf:with_zlib=True
+    quirc:fPIC=True
+    quirc:max_regions=254
+    quirc:shared=False
     spdlog:fPIC=True
     spdlog:header_only=False
     spdlog:no_exceptions=False

@@ -1,44 +1,11 @@
 #pragma once
 
+#include "utils.h"
 #include <givde/types.hpp>
 
 using namespace givde;
 
 namespace approx {
-struct MultiChannelImage {
-    explicit MultiChannelImage(std::vector<MatX<f64>> images)
-        : images(std::move(images))
-    {
-    }
-
-    std::vector<MatX<f64>> images;
-
-    f64 operator()(size_t c, Eigen::Index row, Eigen::Index col) const
-    {
-        return images.at(c)(row, col);
-    }
-
-    MatX<f64> operator[](size_t c) const
-    {
-        return images[c];
-    }
-
-    Eigen::Index size() const
-    {
-        return images[0].size();
-    }
-
-    Eigen::Index rows() const
-    {
-        return images[0].rows();
-    }
-
-    Eigen::Index cols() const
-    {
-        return images[0].cols();
-    }
-};
-
 /**
  * Blend two images together using the poisson equation.
  * @param input_images: The original image(s)

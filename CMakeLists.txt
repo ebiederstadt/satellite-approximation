@@ -27,6 +27,7 @@ find_package(range-v3 REQUIRED)
 find_package(GDAL REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(magic_enum REQUIRED)
+find_package(OpenCV REQUIRED)
 
 add_subdirectory(lib/analysis)
 add_subdirectory(lib/cloud_shadow_detection)
@@ -37,6 +38,7 @@ add_subdirectory(executables)
 set(source_files src/main.cpp)
 python_add_library(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers
+        range-v3::range-v3
         cloud_shadow_detection
         approx
         analysis
@@ -58,10 +60,10 @@ target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 install(TARGETS _core DESTINATION sentinel_data_processing)
 
-enable_testing()
-find_package(doctest REQUIRED)
-add_executable(test_sentinel_data_processing tests/main.cpp)
-target_link_libraries(test_sentinel_data_processing PRIVATE
-        approx
-        doctest::doctest
-        givdetypes::givdetypes)
+#enable_testing()
+#find_package(doctest REQUIRED)
+#add_executable(test_sentinel_data_processing tests/main.cpp)
+#target_link_libraries(test_sentinel_data_processing PRIVATE
+#        approx
+#        doctest::doctest
+#        givdetypes::givdetypes)

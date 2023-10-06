@@ -14,7 +14,8 @@ set(libraries
         Boost::headers
         Boost::boost
         OpenCL::Headers
-        OpenCL::OpenCL)
+        OpenCL::OpenCL
+        range-v3::range-v3)
 target_link_libraries(main_cloud_detection ${libraries})
 
 add_executable(main_spatial_approximation main-spatial-approximation.cpp)

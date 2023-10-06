@@ -1,10 +1,12 @@
 #pragma once
 
 #include <Eigen/Sparse>
+#include <filesystem>
 #include <givde/types.hpp>
 #include <range/v3/all.hpp>
 
 using namespace givde;
+namespace fs = std::filesystem;
 
 namespace approx {
 using triplet_t = Eigen::Triplet<f64>;
@@ -43,4 +45,52 @@ std::vector<index_t> valid_neighbours(MatX<T> const& image, index_t index)
         | ranges::view::remove_if([&image](index_t i) { return !within_bounds(image, i); })
         | ranges::to<std::vector>();
 }
+
+struct MultiChannelImage {
+    explicit MultiChannelImage(std::vector<MatX<f64>> images)
+        : images(std::move(images))
+    {
+    }
+    MultiChannelImage(size_t channels, Eigen::Index rows, Eigen::Index cols);
+
+    std::vector<MatX<f64>> images;
+
+    f64 const& operator()(size_t c, Eigen::Index row, Eigen::Index col) const
+    {
+        return images.at(c)(row, col);
+    }
+
+    f64& operator()(size_t c, Eigen::Index row, Eigen::Index col)
+    {
+        return images.at(c)(row, col);
+    }
+
+    MatX<f64> const& operator[](size_t c) const
+    {
+        return images[c];
+    }
+
+    MatX<f64>& operator[](size_t c)
+    {
+        return images[c];
+    }
+
+    [[nodiscard]] Eigen::Index size() const
+    {
+        return images[0].size();
+    }
+
+    [[nodiscard]] Eigen::Index rows() const
+    {
+        return images[0].rows();
+    }
+
+    [[nodiscard]] Eigen::Index cols() const
+    {
+        return images[0].cols();
+    }
+};
+
+MultiChannelImage read_image(fs::path path);
+void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path);
 }

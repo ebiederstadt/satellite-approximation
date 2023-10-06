@@ -10,4 +10,4 @@ requires-python = ">=3.7"
 
 [tool.scikit-build]
 cmake.args = ["-DCMAKE_TOOLCHAIN_FILE=conan/conan_toolchain.cmake"]
-cmake.build-type = "RelWithDebInfo"
+cmake.build-type = "Release"

@@ -3,7 +3,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(approx STATIC
         source/laplace.cpp
         source/poisson.cpp
-        source/results.cpp)
+        source/results.cpp
+        source/utils.cpp)
 target_include_directories(approx PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
 target_link_libraries(approx PRIVATE
@@ -12,4 +13,5 @@ target_link_libraries(approx PRIVATE
         range-v3::range-v3
         spdlog::spdlog
         Eigen3::Eigen
-        SQLite::SQLite3)
+        SQLite::SQLite3
+        opencv::opencv)

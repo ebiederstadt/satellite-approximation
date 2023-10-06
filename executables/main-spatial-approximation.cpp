@@ -1,19 +1,17 @@
-#include "approx/laplace.h"
-#include <filesystem>
-#include <gdal/gdal_priv.h>
+#include <approx/poisson.h>
+#include <iostream>
 #include <spdlog/spdlog.h>
-
-namespace fs = std::filesystem;
+#include <utils/fmt_filesystem.h>
+#include <utils/log.h>
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
-        spdlog::error("Usage: {} data_path", argv[0]);
-        return -1;
-    }
-
     spdlog::set_level(spdlog::level::debug);
-    GDALAllRegister();
+    spdlog::info("Log location: {}", utils::log_location());
+    approx::MultiChannelImage image = approx::read_image("data/beach.jpg");
+    approx::MultiChannelImage replacement_image = approx::read_image("data/dog.png");
 
-    approx::fill_missing_data_folder(fs::path(argv[1]), { "B02", "B03", "B04", "B08", "B11" }, true, 0.8);
+    approx::blend_images_poisson(image, replacement_image, image.rows() - replacement_image.rows() - 10, 130, 255);
+
+    approx::write_image(image.images, "data/test_output.png");
 }

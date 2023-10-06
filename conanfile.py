@@ -15,7 +15,6 @@ class Recipe(ConanFile):
             "givdetypes/0.6.1",
             "lyra/1.6.1",
             "tomlplusplus/3.3.0",
-            "eigen/3.4.0",
             "spdlog/1.12.0",
             "fmt/10.1.1",
             "nlohmann_json/3.11.2",
@@ -27,7 +26,12 @@ class Recipe(ConanFile):
             "range-v3/0.12.0",
             "doctest/2.4.11",
             "zlib/1.3",
-            "magic_enum/0.9.3"
+            "magic_enum/0.9.3",
+            "opencv/4.5.2"
         ]
         for dependency in dependencies:
             self.requires(dependency)
+
+    def configure(self):
+        self.options["opencv"].with_ffmpeg = False
+        self.options["opencv"].with_webp = False

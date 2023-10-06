@@ -68,10 +68,10 @@ PYBIND11_MODULE(_core, m)
             return input_image;
         },
         "input_image"_a, "invalid_pixels"_a);
-    py::class_<approx::ConnectedComponents>(m, "ConnectedComponents")
-        .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<approx::index_t>>>());
+//    py::class_<approx::ConnectedComponents>(m, "ConnectedComponents")
+//        .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<approx::index_t>>>());
 
-    m.def("find_connected_components", &approx::find_connected_components, "invalid_mask"_a);
+//    m.def("find_connected_components", &approx::find_connected_components, "invalid_mask"_a);
 
     py::class_<approx::Status>(m, "Status")
         .def_readonly("percent_clouds", &approx::Status::percent_clouds)
