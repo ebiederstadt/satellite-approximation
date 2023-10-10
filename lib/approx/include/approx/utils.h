@@ -89,6 +89,12 @@ struct MultiChannelImage {
     {
         return images[0].cols();
     }
+
+    [[nodiscard]] bool valid_pixel(Eigen::Index row, Eigen::Index col) const
+    {
+        bool invalid = static_cast<int>(images[0](row, col)) == 255 && static_cast<int>(images[1](row, col)) == 255 && static_cast<int>(images[2](row, col)) == 255;
+        return !invalid;
+    }
 };
 
 MultiChannelImage read_image(fs::path path);

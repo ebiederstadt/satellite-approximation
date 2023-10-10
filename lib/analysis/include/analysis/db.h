@@ -7,8 +7,8 @@
 #include <variant>
 
 #include "forward.h"
-#include "noCopying.h"
 #include "utils/date.h"
+#include "utils/noCopying.h"
 
 namespace fs = std::filesystem;
 using namespace givde;
@@ -22,9 +22,10 @@ struct CloudShadowStatus {
 
 class DataBase {
     MAKE_NONCOPYABLE(DataBase);
+    MAKE_NONMOVABLE(DataBase);
 
 public:
-    DataBase(fs::path const& base_path);
+    explicit DataBase(fs::path const& base_path);
     ~DataBase();
 
     CloudShadowStatus get_status(std::string date);
@@ -48,8 +49,8 @@ public:
         f64 mean,
         int num_days_used);
 
-    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const &index_matrix, DataChoices choice);
-    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const &index_matrix, MatX<bool> const &invalid_matrix, UseRealData choice);
+    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, DataChoices choice);
+    void store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, MatX<bool> const& invalid_matrix, UseRealData choice);
 
 private:
     sqlite3* db;

@@ -20,4 +20,6 @@ void blend_images_poisson(
     MultiChannelImage const& replacement_images,
     int start_row, int start_column,
     f64 sentinel_value);
+
+void highlight_area_replaced(MultiChannelImage &input_images, MultiChannelImage const &replacement_images, int start_row, int start_col, Vec3<f64> const &color);
 }

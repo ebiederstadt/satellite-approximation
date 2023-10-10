@@ -3,6 +3,7 @@
 #include "utils/error.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/log.h"
+#include "utils/noCopying.h"
 
 #include <filesystem>
 #include <gdal/gdal_priv.h>
@@ -16,14 +17,11 @@ namespace fs = std::filesystem;
 
 namespace utils {
 class GDALDatasetWrapper {
+    MAKE_NONCOPYABLE(GDALDatasetWrapper);
+
 public:
     explicit GDALDatasetWrapper(std::string path);
     virtual ~GDALDatasetWrapper();
-
-    GDALDatasetWrapper(GDALDatasetWrapper const&) = delete;
-    GDALDatasetWrapper(GDALDatasetWrapper&&) = default;
-    GDALDatasetWrapper& operator=(GDALDatasetWrapper const&) = delete;
-    GDALDatasetWrapper& operator=(GDALDatasetWrapper&&) = default;
 
     explicit operator GDALDataset*() { return dataset; }
     GDALDataset* operator->() { return dataset; }
@@ -94,14 +92,11 @@ public:
         "We only support a limited set of GDAL data types at the moment."
         " These include u8, u16, u32, i16, i32, f32, f64");
 
-    GeoTIFF(std::string path, int bandIndex = 1)
+    GeoTIFF(std::string const& path, int bandIndex = 1)
         : m_path(path)
-        , logger(utils::create_logger("utils::GeoTIFF"))
     {
         GDALDatasetWrapper dataset { path };
         dataSetCRS = OGRSpatialReference { dataset->GetProjectionRef() };
-        lngLatCRS.importFromEPSG(EPSG_WGS84);
-        lngLatCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
         dataSetCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
         GDALRasterBand* band = dataset->GetRasterBand(bandIndex);
 
@@ -126,31 +121,6 @@ public:
         if (dataset->GetGeoTransform(geoTransform) != CE_None) {
             throw IOError("Unable to load the geo transformation information", fs::path(path), *logger);
         }
-
-        // Grab their current bounding coordinates
-        // (in their coordinate reference system)
-        auto convertToLatLng = [&](LatLng const& theirPoint) {
-            OGRPoint p;
-            p.setX(theirPoint.y().number());
-            p.setY(theirPoint.x().number());
-            p.assignSpatialReference(&dataSetCRS);
-            if (p.transformTo(&lngLatCRS) != OGRERR_NONE) {
-                throw std::runtime_error("Unable to convert points between coordinate systems");
-            }
-            return LatLng(p.getY(), p.getX());
-        };
-
-        auto nw = northWest();
-        auto se = southEast();
-        // Convert NW
-        nw = convertToLatLng(nw);
-        geoTransform[0] = nw.y().number(); // lng
-        geoTransform[3] = nw.x().number(); // lat
-
-        // Convert SW
-        se = convertToLatLng(se);
-        geoTransform[1] = (se.y() - nw.y()).number() / static_cast<f64>(width);  // lng
-        geoTransform[5] = (se.x() - nw.x()).number() / static_cast<f64>(height); // lat
     }
 
     // Default constructor for the GeoTIFF.
@@ -161,12 +131,6 @@ public:
         , geoTransform {}
     {
     }
-
-    // Default the move/copy constructogrs and assignment operators.
-    GeoTIFF(GeoTIFF const&) = default;
-    GeoTIFF(GeoTIFF&&) noexcept = default;
-    auto operator=(GeoTIFF const&) -> GeoTIFF& = default;
-    auto operator=(GeoTIFF&&) noexcept -> GeoTIFF& = default;
 
     void write(std::string const& pathOfDestination, int bandIndex = 1) const
     {
@@ -335,8 +299,8 @@ public:
 
 private:
     OGRSpatialReference dataSetCRS;
-    OGRSpatialReference lngLatCRS;
     std::string m_path;
-    std::shared_ptr<spdlog::logger> logger;
+    static inline std::shared_ptr<spdlog::logger> logger { utils::create_logger("utils::geotiff") };
 };
+
 }

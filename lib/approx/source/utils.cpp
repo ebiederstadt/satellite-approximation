@@ -48,7 +48,7 @@ void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path)
         for (int col = 0; col < channels[0].cols(); ++col) {
             red_channel.at<uchar>(row, col) = static_cast<uchar>(channels[0](row, col));
             green_channel.at<uchar>(row, col) = static_cast<uchar>(channels[1](row, col));
-            blue_channel.at<uchar>(row, col) = static_cast<uchar>(channels[1](row, col));
+            blue_channel.at<uchar>(row, col) = static_cast<uchar>(channels[2](row, col));
         }
     }
 
