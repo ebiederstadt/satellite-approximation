@@ -6,6 +6,7 @@
 
 namespace approx {
 static auto logger = utils::create_logger("approx::utils");
+static f64 gamma = 2.2;
 
 MultiChannelImage::MultiChannelImage(size_t channels, Eigen::Index rows, Eigen::Index cols)
 {
@@ -24,9 +25,9 @@ MultiChannelImage read_image(fs::path path)
     for (int row = 0; row < image.rows; ++row) {
         for (int col = 0; col < image.cols; ++col) {
             cv::Vec3b pixel = image.at<cv::Vec3b>(row, col);
-            output[0](row, col) = pixel[2];
-            output[1](row, col) = pixel[1];
-            output[2](row, col) = pixel[0];
+            output[0](row, col) = std::pow(pixel[2] / 255.0, 1.0 / gamma);
+            output[1](row, col) = std::pow(pixel[1] / 255.0, 1.0 / gamma);
+            output[2](row, col) = std::pow(pixel[0] / 255.0, 1.0 / gamma);
         }
     }
 
@@ -46,9 +47,9 @@ void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path)
 
     for (int row = 0; row < channels[0].rows(); ++row) {
         for (int col = 0; col < channels[0].cols(); ++col) {
-            red_channel.at<uchar>(row, col) = static_cast<uchar>(channels[0](row, col));
-            green_channel.at<uchar>(row, col) = static_cast<uchar>(channels[1](row, col));
-            blue_channel.at<uchar>(row, col) = static_cast<uchar>(channels[2](row, col));
+            red_channel.at<uchar>(row, col) = static_cast<uchar>(std::pow(channels[0](row, col), gamma) * 255.0);
+            green_channel.at<uchar>(row, col) = static_cast<uchar>(std::pow(channels[1](row, col), gamma) * 255.0);
+            blue_channel.at<uchar>(row, col) = static_cast<uchar>(std::pow(channels[2](row, col), gamma) * 255);
         }
     }
 
