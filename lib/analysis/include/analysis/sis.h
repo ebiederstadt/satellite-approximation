@@ -21,4 +21,7 @@ void single_image_summary(
     Indices index,
     f64 threshold,
     DataChoices choices);
+
+void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, Indices index, DataBase &db, DataChoices choices);
+
 }
