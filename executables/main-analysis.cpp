@@ -1,44 +1,22 @@
-#include <analysis/sis.h>
-#include <analysis/utils.h>
+#include <analysis/db.h>
+#include <analysis/noise.h>
 #include <filesystem>
-#include <gdal/gdal_priv.h>
 #include <spdlog/spdlog.h>
 #include <sqlite3.h>
+#include <utils/fmt_filesystem.h>
 #include <utils/log.h>
+#include <gdal/gdal_priv.h>
 
 namespace fs = std::filesystem;
-using namespace givde;
 
 int main(int argc, char** argv)
 {
-    utils::create_logger("main");
-    auto logger = spdlog::get("main");
-
-    if (argc != 6) {
-        logger->error("Usage: {} base_path start_year end_year index threshold", argv[0]);
-        return -1;
-    }
-
-    sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
-
-    fs::path base_folder(argv[1]);
-    int start_year = std::stoi(argv[2]);
-    int end_year = std::stoi(argv[3]);
-    auto index_or_none = analysis::from_str(argv[4]);
-    if (!index_or_none.has_value()) {
-        logger->error("Failed to map to provided index to a known index (tried {})", argv[4]);
-        return -1;
-    }
-    auto index = index_or_none.value();
-    f64 threshold = std::stod(argv[5]);
-    analysis::DataChoices data_choices = analysis::UseRealData {
-        .exclude_cloudy_pixels = true,
-        .exclude_shadow_pixels = true,
-        .skip_threshold = 0.8
-    };
-
     spdlog::set_level(spdlog::level::debug);
+    sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
     GDALAllRegister();
+    spdlog::info("Log location: {}", utils::log_location());
 
-    analysis::single_image_summary(base_folder, true, start_year, end_year, index, threshold, data_choices);
+    fs::path base_folder = "/home/ebiederstadt/Documents/sentinel_cache/bbox-111.9314176_56.921209032_-111.6817217_57.105787570/2019-05-22";
+    analysis::DataBase db(base_folder.parent_path());
+    analysis::remove_noise_in_clouds_and_shadows(base_folder, 100, false, db);
 }

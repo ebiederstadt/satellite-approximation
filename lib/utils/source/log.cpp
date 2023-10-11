@@ -5,7 +5,10 @@
 #include <spdlog/spdlog.h>
 
 namespace utils {
-fs::path log_path = fs::path("logs") / "main.log";
+static fs::path log_path()
+{
+    return fs::path("logs") / "main.log";
+}
 
 std::shared_ptr<spdlog::logger> create_logger(std::string const& name)
 {
@@ -18,7 +21,7 @@ std::shared_ptr<spdlog::logger> create_logger(std::string const& name)
     console_sink->set_level(spdlog::level::warn);
     console_sink->set_pattern("[%^%l%$] %v");
 
-    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path, true);
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path(), true);
     file_sink->set_level(spdlog::level::trace);
 
     std::vector<spdlog::sink_ptr> sinks;
@@ -33,6 +36,6 @@ std::shared_ptr<spdlog::logger> create_logger(std::string const& name)
 }
 
 fs::path log_location() {
-    return fs::current_path() / log_path;
+    return fs::current_path() / log_path();
 }
 }

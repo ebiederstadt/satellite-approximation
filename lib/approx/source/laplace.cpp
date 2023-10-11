@@ -1,5 +1,6 @@
 #include "approx/laplace.h"
 #include "approx/results.h"
+#include "utils/eigen.h"
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
@@ -118,59 +119,59 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
     }
 }
 
-//std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col)
+// std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col)
 //{
-//    std::queue<index_t> queue;
-//    queue.push(index_t { row, col });
-//    std::vector<index_t> connected_pixels;
+//     std::queue<index_t> queue;
+//     queue.push(index_t { row, col });
+//     std::vector<index_t> connected_pixels;
 //
-//    MatX<bool> considered(invalid.rows(), invalid.cols());
-//    considered.setConstant(false);
+//     MatX<bool> considered(invalid.rows(), invalid.cols());
+//     considered.setConstant(false);
 //
-//    while (!queue.empty()) {
-//        auto element = queue.front();
-//        queue.pop();
+//     while (!queue.empty()) {
+//         auto element = queue.front();
+//         queue.pop();
 //
-//        // Continue to process this pixel only if it is invalid, and it has not yet been considered, otherwise
-//        // we are duplicating work. (Makes a massive difference for larger datasets)
-//        if (invalid(element.row, element.col) && !considered(element.row, element.col)) {
-//            connected_pixels.push_back(element);
-//            auto neighbours = valid_neighbours(invalid, element);
-//            considered(element.row, element.col) = true;
-//            for (auto const& neighbour : neighbours) {
-//                if (!considered(neighbour.row, neighbour.col)) {
-//                    queue.push(neighbour);
-//                }
-//            }
-//        }
-//    }
+//         // Continue to process this pixel only if it is invalid, and it has not yet been considered, otherwise
+//         // we are duplicating work. (Makes a massive difference for larger datasets)
+//         if (invalid(element.row, element.col) && !considered(element.row, element.col)) {
+//             connected_pixels.push_back(element);
+//             auto neighbours = valid_neighbours(invalid, element);
+//             considered(element.row, element.col) = true;
+//             for (auto const& neighbour : neighbours) {
+//                 if (!considered(neighbour.row, neighbour.col)) {
+//                     queue.push(neighbour);
+//                 }
+//             }
+//         }
+//     }
 //
-//    return connected_pixels;
-//}
+//     return connected_pixels;
+// }
 
-//ConnectedComponents find_connected_components(MatX<bool> const& invalid)
+// ConnectedComponents find_connected_components(MatX<bool> const& invalid)
 //{
-//    MatX<int> dataclass(invalid.rows(), invalid.cols());
-//    dataclass.fill(0);
-//    int highest_class = 1;
-//    std::unordered_map<int, std::vector<index_t>> component_index;
+//     MatX<int> dataclass(invalid.rows(), invalid.cols());
+//     dataclass.fill(0);
+//     int highest_class = 1;
+//     std::unordered_map<int, std::vector<index_t>> component_index;
 //
-//    for (Eigen::Index col = 0; col < invalid.cols(); ++col) {
-//        for (Eigen::Index row = 0; row < invalid.rows(); ++row) {
-//            // If a Pixel is invalid and does not already belong to a dataclass, then assign it a dataclass using the flood fill algorithm
-//            if (invalid(row, col) && dataclass(row, col) == 0) {
-//                auto connected_pixels = flood(invalid, row, col);
-//                for (auto const& pixel : connected_pixels) {
-//                    dataclass(pixel.row, pixel.col) = highest_class;
-//                }
-//                component_index.emplace(highest_class, connected_pixels);
-//                highest_class += 1;
-//            }
-//        }
-//    }
+//     for (Eigen::Index col = 0; col < invalid.cols(); ++col) {
+//         for (Eigen::Index row = 0; row < invalid.rows(); ++row) {
+//             // If a Pixel is invalid and does not already belong to a dataclass, then assign it a dataclass using the flood fill algorithm
+//             if (invalid(row, col) && dataclass(row, col) == 0) {
+//                 auto connected_pixels = flood(invalid, row, col);
+//                 for (auto const& pixel : connected_pixels) {
+//                     dataclass(pixel.row, pixel.col) = highest_class;
+//                 }
+//                 component_index.emplace(highest_class, connected_pixels);
+//                 highest_class += 1;
+//             }
+//         }
+//     }
 //
-//    return { dataclass, component_index };
-//}
+//     return { dataclass, component_index };
+// }
 
 void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> const& invalid_pixels)
 {
@@ -239,11 +240,11 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
         }
         MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
-        status.percent_clouds = static_cast<f64>(cloud_tiff.values.cast<int>().sum() / static_cast<f64>(cloud_tiff.values.size()));
+        status.percent_clouds = utils::percent_valid(cloud_tiff.values);
         if (status.shadows_computed) {
-            status.percent_shadows = static_cast<f64>(shadow_tiff.values.cast<int>().sum() / static_cast<f64>(shadow_tiff.values.size()));
+            status.percent_shadows = utils::percent_valid(shadow_tiff.values);
         }
-        status.percent_invalid = static_cast<f64>(mask.cast<int>().sum()) / static_cast<f64>(mask.size());
+        status.percent_invalid = utils::percent_valid(mask);
         if (status.percent_invalid >= skip_threshold) {
             logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
             // Even though we are skipping spatial approximation, we still want to record stats about this date
