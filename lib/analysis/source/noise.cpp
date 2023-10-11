@@ -43,13 +43,14 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
             if (flood_result.at<int>(x, y) == -100) {
                 nelem++;
 
+                cv::Rect rect;
                 cv::Mat flood_mask = cv::Mat::zeros(flood_result.rows + 2, flood_result.cols + 2, CV_8U);
-                int num_filled_pixels = cv::floodFill(flood_result, flood_mask, cv::Point(y, x), cv::Scalar(nelem), 0, 0, 8);
+                int num_filled_pixels = cv::floodFill(flood_result, flood_mask, cv::Point(y, x), cv::Scalar(nelem), &rect, 0, 8);
 
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++) {
+                for (int i = rect.y; i < rect.y + rect.height; i++) {
+                    for (int j = rect.x; j < rect.x + rect.width; j++) {
                         if (flood_mask.at<uchar>(i, j)) {
-                            eigen_flood_result(i, j) = (num_filled_pixels < 50) ? 0 : 1;
+                            eigen_flood_result(i, j) = (num_filled_pixels < min_region_size) ? 0 : 1;
                         }
                     }
                 }
