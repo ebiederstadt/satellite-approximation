@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS dates(
     percent_cloudy REAL,
     percent_shadows REAL,
     percent_invalid REAL,
+    percent_invalid_noise_removed REAL,
+    threshold_used_for_noise_removal REAL,
     PRIMARY KEY(year, month, day));
 )sql";
     rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err_msg);

@@ -49,6 +49,9 @@ public:
         f64 mean,
         int num_days_used);
 
+    void save_noise_removal(std::string const &date_string, f64 percent_invalid, int threshold);
+    bool noise_exists(std::string const &date_string, int threshold);
+
     void store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, DataChoices choice);
     void store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, MatX<bool> const& invalid_matrix, UseRealData choice);
 

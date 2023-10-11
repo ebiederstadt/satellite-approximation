@@ -240,11 +240,11 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
         }
         MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
-        status.percent_clouds = utils::percent_valid(cloud_tiff.values);
+        status.percent_clouds = utils::percent_non_zero(cloud_tiff.values);
         if (status.shadows_computed) {
-            status.percent_shadows = utils::percent_valid(shadow_tiff.values);
+            status.percent_shadows = utils::percent_non_zero(shadow_tiff.values);
         }
-        status.percent_invalid = utils::percent_valid(mask);
+        status.percent_invalid = utils::percent_non_zero(mask);
         if (status.percent_invalid >= skip_threshold) {
             logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
             // Even though we are skipping spatial approximation, we still want to record stats about this date

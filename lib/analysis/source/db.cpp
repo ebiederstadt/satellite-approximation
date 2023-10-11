@@ -287,4 +287,45 @@ void DataBase::store_index_info(std::string const& date_string, analysis::Indice
         throw std::runtime_error(fmt::format("Failed to insert data into index_data table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
     }
 }
+
+void DataBase::save_noise_removal(std::string const& date_string, givde::f64 percent_invalid, int threshold)
+{
+    utils::Date date(date_string);
+
+    sqlite3_stmt* stmt_insert = nullptr;
+    std::string sql_string = R"sql(
+INSERT OR REPLACE INTO dates (year, month, day, percent_invalid_noise_removed, threshold_used_for_noise_removal)
+VALUES(?, ?, ?, ?, ?);)sql";
+    sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_insert, nullptr);
+    int index = date.bind_sql(stmt_insert, 1);
+    sqlite3_bind_double(stmt_insert, index, percent_invalid);
+    sqlite3_bind_int(stmt_insert, index + 1, threshold);
+    int rc = sqlite3_step(stmt_insert);
+    if (rc != SQLITE_DONE) {
+        sqlite3_finalize(stmt_insert);
+        throw std::runtime_error(fmt::format("Failed to insert data into dates table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
+    }
+    sqlite3_finalize(stmt_insert);
+}
+
+bool DataBase::noise_exists(std::string const& date_string, int threshold)
+{
+    utils::Date date(date_string);
+
+    sqlite3_stmt* stmt_select;
+    std::string sql_string = "SELECT * FROM dates WHERE year = ? AND month = ? AND day = ? AND threshold_used_for_noise_removal = ?";
+    sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_select, nullptr);
+    int index = date.bind_sql(stmt_select, 1);
+    sqlite3_bind_int(stmt_select, index, threshold);
+    int rc = sqlite3_step(stmt_select);
+
+    if (rc == SQLITE_DONE) {
+        return false;
+    } else if (rc == SQLITE_ROW) {
+        return true;
+    } else {
+        sqlite3_finalize(stmt_select);
+        throw std::runtime_error(fmt::format("Failed to select data from dates table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
+    }
+}
 }

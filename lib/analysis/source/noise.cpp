@@ -1,7 +1,6 @@
 #include "analysis/noise.h"
 
 #include <opencv2/core/eigen.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <utils/eigen.h>
 #include <utils/geotiff.h>
@@ -12,11 +11,19 @@ static auto logger = utils::create_logger("analysis::noise");
 
 void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bool use_cache, DataBase& db)
 {
-    if (use_cache && fs::exists(folder / "cloud_shadows_noise_removed.tif")) {
-        return;
+    std::mutex mutex;
+    if (use_cache) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (db.noise_exists(folder.filename(), min_region_size)) {
+            return;
+        }
     }
 
-    CloudShadowStatus status = db.get_status(folder.filename());
+    CloudShadowStatus status;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        status = db.get_status(folder.filename());
+    }
     if (!(status.shadows_exist && status.clouds_exist)) {
         logger->warn("Could not compute: clouds and shadows both do not exist in {}", folder);
         return;
@@ -37,7 +44,7 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
     int nelem = 0;
 
     logger->debug("Performing flood fill with an image of {}x{}", width, height);
-    logger->debug("Before removing regions, {:.2f}% of the pixels are invalid", 100 * utils::percent_valid(invalid_pixels));
+    logger->debug("Before removing regions, {:.2f}% of the pixels are invalid", 100 * utils::percent_non_zero(invalid_pixels));
     for (int x = 0; x < height; x++) {
         for (int y = 0; y < width; y++) {
             if (flood_result.at<int>(x, y) == -100) {
@@ -58,10 +65,16 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
         }
     }
 
-    logger->debug("After flood fill, {:.2f}% pixels are invalid", 100 * utils::percent_valid(eigen_flood_result));
+    f64 percent_invalid = utils::percent_non_zero(eigen_flood_result);
+    logger->debug("After flood fill, {:.2f}% pixels are invalid", 100 * percent_invalid);
     logger->debug("Min: {}, max: {}, mean: {}", eigen_flood_result.minCoeff(), eigen_flood_result.maxCoeff(), eigen_flood_result.mean());
 
+    // Write values to db
     tiff.values = eigen_flood_result.cast<u8>();
-    tiff.write(folder / "cloud_shadows_noise_removed.tif");
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        tiff.write(folder / "cloud_shadows_noise_removed.tif");
+        db.save_noise_removal(folder.filename(), percent_invalid, min_region_size);
+    }
 }
 }
