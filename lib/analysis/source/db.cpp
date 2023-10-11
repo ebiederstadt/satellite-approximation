@@ -294,8 +294,12 @@ void DataBase::save_noise_removal(std::string const& date_string, givde::f64 per
 
     sqlite3_stmt* stmt_insert = nullptr;
     std::string sql_string = R"sql(
-INSERT OR REPLACE INTO dates (year, month, day, percent_invalid_noise_removed, threshold_used_for_noise_removal)
-VALUES(?, ?, ?, ?, ?);)sql";
+INSERT INTO dates (year, month, day, percent_invalid_noise_removed, threshold_used_for_noise_removal)
+VALUES(?, ?, ?, ?, ?)
+ON CONFLICT(year, month, day) DO
+UPDATE SET
+    percent_invalid_noise_removed = excluded.percent_invalid_noise_removed,
+    threshold_used_for_noise_removal = excluded.threshold_used_for_noise_removal;)sql";
     sqlite3_prepare_v2(db, sql_string.c_str(), (int)sql_string.length(), &stmt_insert, nullptr);
     int index = date.bind_sql(stmt_insert, 1);
     sqlite3_bind_double(stmt_insert, index, percent_invalid);

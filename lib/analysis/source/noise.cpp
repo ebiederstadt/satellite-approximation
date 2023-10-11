@@ -1,8 +1,10 @@
 #include "analysis/noise.h"
 
+#include <execution>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
 #include <utils/eigen.h>
+#include <utils/filesystem.h>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 
@@ -43,7 +45,6 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
     int width = flood_result.cols;
     int nelem = 0;
 
-    logger->debug("Performing flood fill with an image of {}x{}", width, height);
     logger->debug("Before removing regions, {:.2f}% of the pixels are invalid", 100 * utils::percent_non_zero(invalid_pixels));
     for (int x = 0; x < height; x++) {
         for (int y = 0; y < width; y++) {
@@ -67,7 +68,6 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
 
     f64 percent_invalid = utils::percent_non_zero(eigen_flood_result);
     logger->debug("After flood fill, {:.2f}% pixels are invalid", 100 * percent_invalid);
-    logger->debug("Min: {}, max: {}, mean: {}", eigen_flood_result.minCoeff(), eigen_flood_result.maxCoeff(), eigen_flood_result.mean());
 
     // Write values to db
     tiff.values = eigen_flood_result.cast<u8>();
@@ -76,5 +76,24 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
         tiff.write(folder / "cloud_shadows_noise_removed.tif");
         db.save_noise_removal(folder.filename(), percent_invalid, min_region_size);
     }
+}
+
+void remove_noise_folder(fs::path base_folder, int min_region_size, bool use_cache, DataBase& db)
+{
+    if (!is_directory(base_folder)) {
+        logger->warn("Could not process. The provided path is not a folder: {}", base_folder);
+        return;
+    }
+
+    std::vector<fs::path> folders_to_process;
+    for (auto const& folder : fs::directory_iterator(base_folder)) {
+        if (utils::find_directory_contents(folder) == utils::DirectoryContents::MultiSpectral) {
+            folders_to_process.push_back(folder);
+        }
+    }
+
+    std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(), [&](std::filesystem::path const& path) {
+        remove_noise_in_clouds_and_shadows(path, min_region_size, use_cache, db);
+    });
 }
 }

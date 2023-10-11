@@ -60,8 +60,15 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     for (auto const& [date, status] : results) {
         // Insert the basic data
         sql = R"sql(
-INSERT OR REPLACE INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
+INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(year, month, day) DO
+UPDATE SET
+    clouds_computed = excluded.clouds_computed,
+    shadows_computed = excluded.shadows_computed,
+    percent_cloudy = excluded.percent_cloudy,
+    percent_shadows = excluded.percent_shadows,
+    percent_invalid = excluded.percent_invalid;
 )sql";
         sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
         int index = date.bind_sql(stmt, 1);

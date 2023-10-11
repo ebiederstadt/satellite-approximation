@@ -20,6 +20,5 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
  * @param base_folder
  * @param use_cache
  */
-void remove_noise_folder(fs::path folder, int min_region_size, bool use_cache, DataBase& db);
-
+void remove_noise_folder(fs::path base_folder, int min_region_size, bool use_cache, DataBase& db);
 }
