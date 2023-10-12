@@ -1,5 +1,5 @@
 #include "approx/laplace.h"
-#include "approx/results.h"
+#include "approx/db.h"
 #include "utils/eigen.h"
 #include "utils/filesystem.h"
 #include "utils/fmt_filesystem.h"
@@ -193,6 +193,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         return;
     }
 
+    DataBase db(base_folder);
     std::unordered_map<utils::Date, Status> results;
 
     std::vector<fs::path> folders_to_process;
@@ -272,6 +273,6 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         logger->info("Finished folder: {}", folder);
     });
 
-    write_results_to_db(base_folder, results);
+    db.write_approx_results(results);
 }
 }

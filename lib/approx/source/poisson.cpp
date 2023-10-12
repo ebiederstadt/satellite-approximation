@@ -1,7 +1,11 @@
 #include "approx/poisson.h"
 #include "approx/utils.h"
-#include "utils/log.h"
+#include <boost/date_time/gregorian/gregorian.hpp>
 #include <spdlog/stopwatch.h>
+#include <utils/error.h>
+#include <utils/log.h>
+
+namespace date_time = boost::gregorian;
 
 namespace approx {
 auto logger = utils::create_logger("approx::poisson");
@@ -20,7 +24,8 @@ void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage con
     }
     if (start_row + replacement_images.rows() > input_images.rows() || start_column + replacement_images.cols() > input_images.cols()) {
         logger->error("Cannot solve problem: replacement image goes beyond the bounds of the input image"
-                      "({}, {} vs {}, {})", start_row + replacement_images.rows(), start_column + replacement_images.cols(), input_images.rows(), input_images.cols());
+                      "({}, {} vs {}, {})",
+            start_row + replacement_images.rows(), start_column + replacement_images.cols(), input_images.rows(), input_images.cols());
         return;
     }
 
@@ -144,5 +149,28 @@ void highlight_area_replaced(MultiChannelImage& input_images, MultiChannelImage 
             }
         }
     }
+}
+
+std::string find_good_close_image(std::string const& date_string, bool use_denoised_data, f64 distance_weight, DataBase& db)
+{
+    if (distance_weight < 0 || distance_weight > 1) {
+        throw utils::GenericError("Could not find close image: distance weight not between 0 and 1", *logger);
+    }
+
+    auto date = date_time::from_simple_string(date_string);
+    auto previous_month = date - date_time::months(1);
+    auto next_month = date + date_time::months(1);
+
+    std::vector<DayInfo> info = db.select_close_images(date_string);
+    if (info.empty()) {
+        logger->warn("Could not find any good images close by. Date: {}", date_time::to_simple_string(date));
+        return {};
+    }
+
+    std::sort(info.begin(), info.end(), [&](DayInfo const& first, DayInfo const& second) {
+        return first.distance(date, distance_weight, use_denoised_data) < second.distance(date, distance_weight, use_denoised_data);
+    });
+
+    return date_time::to_iso_extended_string(info[0].date);
 }
 }

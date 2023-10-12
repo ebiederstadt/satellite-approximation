@@ -1,9 +1,11 @@
 #pragma once
 
+#include "db.h"
 #include "utils.h"
 #include <givde/types.hpp>
 
 using namespace givde;
+namespace date_time = boost::gregorian;
 
 namespace approx {
 /**
@@ -22,4 +24,14 @@ void blend_images_poisson(
     f64 sentinel_value);
 
 void highlight_area_replaced(MultiChannelImage &input_images, MultiChannelImage const &replacement_images, int start_row, int start_col, Vec3<f64> const &color);
+
+/**
+ * Find a good image that is close to the current image, but
+ * @param date_string
+ * @param use_denoised_data
+ * @param distance_weight
+ * @param db
+ * @return
+ */
+std::string find_good_close_image(std::string const &date_string, bool use_denoised_data, f64 distance_weight, DataBase &db);
 }

@@ -3,7 +3,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(approx STATIC
         source/laplace.cpp
         source/poisson.cpp
-        source/results.cpp
+        source/db.cpp
         source/utils.cpp)
 target_include_directories(approx PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
