@@ -32,6 +32,7 @@ public:
 
     void write_approx_results(std::unordered_map<utils::Date, Status> const& results);
     std::vector<DayInfo> select_close_images(std::string const &date_string);
+    DayInfo select_info_about_date(std::string const &date_string);
 
 private:
     sqlite3* db = nullptr;

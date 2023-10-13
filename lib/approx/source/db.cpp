@@ -165,4 +165,29 @@ FROM dates WHERE
 
     return return_value;
 }
+
+DayInfo DataBase::select_info_about_date(std::string const& date_string)
+{
+    auto date = date_time::from_simple_string(date_string);
+
+    DayInfo info;
+    std::string sql_string = R"sql(
+SELECT percent_invalid, percent_invalid_noise_removed, threshold_used_for_noise_removal
+FROM dates WHERE year = ? AND month = ? AND day = ?
+    ORDER BY year, month, day
+)sql";
+    {
+        utils::StmtWrapper stmt(db, sql_string);
+        sqlite3_bind_int(stmt.stmt, 1, date.year());
+        sqlite3_bind_int(stmt.stmt, 2, date.month());
+        sqlite3_bind_int(stmt.stmt, 3, date.day());
+
+        while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
+            info.percent_invalid = sqlite3_column_double(stmt.stmt, 0);
+            info.percent_invalid_noise_removed = sqlite3_column_double(stmt.stmt, 1);
+        }
+    }
+
+    return info;
+}
 }

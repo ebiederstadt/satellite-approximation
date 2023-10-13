@@ -26,7 +26,7 @@ struct index_t {
 template<typename T>
 bool within_bounds(MatX<T> const& image, index_t index)
 {
-    return !(index.row < 0 || index.row >= image.rows() || index.col < 0 || index.col >= image.cols());
+    return index.row > 0 && index.row < image.rows() && index.col > 0 && index.col < image.cols();
 }
 
 template<typename T>
@@ -52,6 +52,7 @@ struct MultiChannelImage {
     {
     }
     MultiChannelImage(size_t channels, Eigen::Index rows, Eigen::Index cols);
+    MultiChannelImage() = default;
 
     std::vector<MatX<f64>> images;
 

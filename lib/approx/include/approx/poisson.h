@@ -23,6 +23,17 @@ void blend_images_poisson(
     int start_row, int start_column,
     f64 sentinel_value);
 
+/**
+ * Blend two images together using the poisson equation.
+ * @param input_images: The original image(s)
+ * @param replacement_images: New image(s) that we want to blend with the original image(s).
+ * @param invalid_mask: A mask with true at places where the pixels in the original image are invalid, and false where the pixels are determined to be valid
+ */
+void blend_images_poisson(
+    MultiChannelImage& input_images,
+    MultiChannelImage const& replacement_images,
+    MatX<bool> const &invalid_mask);
+
 void highlight_area_replaced(MultiChannelImage &input_images, MultiChannelImage const &replacement_images, int start_row, int start_col, Vec3<f64> const &color);
 
 /**
