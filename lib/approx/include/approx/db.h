@@ -14,17 +14,6 @@ using namespace givde;
 namespace approx {
 struct Status;
 
-class StmtWrapper {
-    MAKE_NONCOPYABLE(StmtWrapper);
-    MAKE_NONMOVABLE(StmtWrapper);
-
-public:
-    StmtWrapper(sqlite3* db, std::string const &sql);
-    ~StmtWrapper();
-
-sqlite3_stmt* stmt = nullptr;
-};
-
 struct DayInfo {
     date_time::date date;
     f64 percent_invalid;

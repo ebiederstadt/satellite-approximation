@@ -1,32 +1,16 @@
 #include "approx/db.h"
 #include "approx/laplace.h"
+#include "utils/db.h"
 #include "utils/error.h"
 #include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 
-#include <iostream>
 #include <sqlite3.h>
 
 namespace approx {
 static auto logger = utils::create_logger("approx");
 
-StmtWrapper::StmtWrapper(sqlite3* db, std::string const& sql)
-{
-    int rc = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
-    if (rc != SQLITE_OK) {
-        throw utils::DBError("Failed to prepare statement", rc);
-    }
-}
-
-StmtWrapper::~StmtWrapper()
-{
-    int rc = sqlite3_finalize(stmt);
-    if (rc != SQLITE_OK) {
-        throw utils::DBError("Failed to finalize prepared statement", rc);
-    }
-}
-
-f64 DayInfo::distance(date_time::date const &other, f64 weight, bool use_denoised_data) const
+f64 DayInfo::distance(date_time::date const& other, f64 weight, bool use_denoised_data) const
 {
     auto num_days = (f64)std::abs((other - date).days());
     return weight * num_days + (1 - weight) * (use_denoised_data ? percent_invalid_noise_removed : percent_invalid);
@@ -103,7 +87,7 @@ UPDATE SET
     percent_invalid = excluded.percent_invalid;
 )sql";
         {
-            StmtWrapper stmt(db, sql);
+            utils::StmtWrapper stmt(db, sql);
             int index = date.bind_sql(stmt.stmt, 1);
             sqlite3_bind_int(stmt.stmt, index, (int)status.clouds_computed);
             sqlite3_bind_int(stmt.stmt, index + 1, (int)status.shadows_computed);
@@ -124,7 +108,7 @@ UPDATE SET
 INSERT OR REPLACE INTO approximated_data (band_name, spatial, temporal, year, month, day)
 VALUES(?, ?, ?, ?, ?, ?)
 )sql";
-            StmtWrapper stmt(db, sql);
+            utils::StmtWrapper stmt(db, sql);
             sqlite3_bind_text(stmt.stmt, 1, band.c_str(), (int)band.length(), SQLITE_STATIC);
             sqlite3_bind_int(stmt.stmt, 2, (int)true);
             sqlite3_bind_int(stmt.stmt, 3, (int)false);
@@ -137,7 +121,7 @@ VALUES(?, ?, ?, ?, ?, ?)
     }
 }
 
-std::vector<DayInfo> DataBase::select_close_images(std::string const &date_string)
+std::vector<DayInfo> DataBase::select_close_images(std::string const& date_string)
 {
     auto date = date_time::from_simple_string(date_string);
     auto next_month = date + date_time::months(1);
@@ -154,7 +138,7 @@ FROM dates WHERE
     ORDER BY year, month, day
 )sql";
     {
-        StmtWrapper stmt(db, sql_string);
+        utils::StmtWrapper stmt(db, sql_string);
         sqlite3_bind_int(stmt.stmt, 1, date.year());
         sqlite3_bind_int(stmt.stmt, 2, next_month.year());
         sqlite3_bind_int(stmt.stmt, 3, previous_month.year());
@@ -164,8 +148,6 @@ FROM dates WHERE
         sqlite3_bind_int(stmt.stmt, 7, date.year());
         sqlite3_bind_int(stmt.stmt, 8, date.month());
         sqlite3_bind_int(stmt.stmt, 9, date.day());
-
-        logger->debug("stmt: {}", sqlite3_expanded_sql(stmt.stmt));
 
         while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
             DayInfo info;
