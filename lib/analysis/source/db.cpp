@@ -7,21 +7,11 @@
 #include <spdlog/spdlog.h>
 
 namespace analysis {
-DataBase::DataBase(fs::path const& base_path)
-    : logger(utils::create_logger("analysis::DB"))
-{
-    fs::path db_path = base_path / fs::path("approximation.db");
-    int rc = sqlite3_open(db_path.c_str(), &db);
-    if (rc != SQLITE_OK) {
-        throw std::runtime_error(fmt::format("Failed to open database. Looking for file: {}", db_path.string()));
-    }
-    sql = "SELECT clouds_computed, shadows_computed, percent_invalid FROM dates WHERE year=? AND month=? AND day=?;";
-    stmt = std::make_unique<utils::StmtWrapper>(db, sql);
-}
+static auto logger = utils::create_logger("analysis::DB");
 
-DataBase::~DataBase()
+DataBase::DataBase(fs::path base_path)
+    : utils::DataBase(std::move(base_path))
 {
-    sqlite3_close(db);
 }
 
 std::vector<std::string> DataBase::get_approximated_data(std::string const& date_string)
@@ -40,24 +30,6 @@ SELECT band_name FROM approximated_data WHERE year=? AND month=? AND day=? AND s
     }
 
     return bands;
-}
-
-CloudShadowStatus DataBase::get_status(std::string date_string)
-{
-    utils::Date date(date_string);
-    date.bind_sql(stmt->stmt, 1);
-    int rc = sqlite3_step(stmt->stmt);
-    if (rc != SQLITE_ROW) {
-        logger->error(
-            "Failed to find date of interest: {}. Ran query: {}, rc={}", date, sqlite3_expanded_sql(stmt->stmt), rc);
-        return {};
-    }
-    auto cloud_status = (bool)sqlite3_column_int(stmt->stmt, 0);
-    auto shadow_status = (bool)sqlite3_column_int(stmt->stmt, 1);
-    auto percent_invalid = sqlite3_column_double(stmt->stmt, 2);
-
-    sqlite3_reset(stmt->stmt);
-    return { cloud_status, shadow_status, percent_invalid };
 }
 
 void DataBase::prepare_stmt(

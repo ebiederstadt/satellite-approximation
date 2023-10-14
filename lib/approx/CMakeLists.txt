@@ -14,4 +14,5 @@ target_link_libraries(approx PRIVATE
         spdlog::spdlog
         Eigen3::Eigen
         SQLite::SQLite3
-        opencv::opencv)
+        opencv::opencv
+        magic_enum::magic_enum)

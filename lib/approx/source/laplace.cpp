@@ -119,60 +119,6 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
     }
 }
 
-// std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col)
-//{
-//     std::queue<index_t> queue;
-//     queue.push(index_t { row, col });
-//     std::vector<index_t> connected_pixels;
-//
-//     MatX<bool> considered(invalid.rows(), invalid.cols());
-//     considered.setConstant(false);
-//
-//     while (!queue.empty()) {
-//         auto element = queue.front();
-//         queue.pop();
-//
-//         // Continue to process this pixel only if it is invalid, and it has not yet been considered, otherwise
-//         // we are duplicating work. (Makes a massive difference for larger datasets)
-//         if (invalid(element.row, element.col) && !considered(element.row, element.col)) {
-//             connected_pixels.push_back(element);
-//             auto neighbours = valid_neighbours(invalid, element);
-//             considered(element.row, element.col) = true;
-//             for (auto const& neighbour : neighbours) {
-//                 if (!considered(neighbour.row, neighbour.col)) {
-//                     queue.push(neighbour);
-//                 }
-//             }
-//         }
-//     }
-//
-//     return connected_pixels;
-// }
-
-// ConnectedComponents find_connected_components(MatX<bool> const& invalid)
-//{
-//     MatX<int> dataclass(invalid.rows(), invalid.cols());
-//     dataclass.fill(0);
-//     int highest_class = 1;
-//     std::unordered_map<int, std::vector<index_t>> component_index;
-//
-//     for (Eigen::Index col = 0; col < invalid.cols(); ++col) {
-//         for (Eigen::Index row = 0; row < invalid.rows(); ++row) {
-//             // If a Pixel is invalid and does not already belong to a dataclass, then assign it a dataclass using the flood fill algorithm
-//             if (invalid(row, col) && dataclass(row, col) == 0) {
-//                 auto connected_pixels = flood(invalid, row, col);
-//                 for (auto const& pixel : connected_pixels) {
-//                     dataclass(pixel.row, pixel.col) = highest_class;
-//                 }
-//                 component_index.emplace(highest_class, connected_pixels);
-//                 highest_class += 1;
-//             }
-//         }
-//     }
-//
-//     return { dataclass, component_index };
-// }
-
 void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> const& invalid_pixels)
 {
     if (input_image.size() != invalid_pixels.size()) {
@@ -212,67 +158,53 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             fs::create_directory(output_dir);
         }
 
-        utils::GeoTIFF<u16> cloud_tiff;
-        utils::GeoTIFF<u16> shadow_tiff;
-
-        Status status;
-        if (fs::exists(folder / fs::path("cloud_mask.tif"))) {
-            try {
-                cloud_tiff = utils::GeoTIFF<u16>(folder / fs::path("cloud_mask.tif"));
-                status.clouds_computed = true;
-            } catch (std::runtime_error const& e) {
-                logger->warn("Failed to open cloud file. Failed with error: {}", e.what());
-            }
-        }
-        if (fs::exists(folder / fs::path("shadow_mask.tif"))) {
-            try {
-                shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
-                status.shadows_computed = true;
-            } catch (std::runtime_error const& e) {
-                logger->warn("Failed to open shadow file. Failed with error: {}", e.what());
-            }
-        }
-        if (!(status.clouds_computed || status.shadows_computed)) {
-            logger->warn("Could not find mask data. Skipping dir: {}", folder);
-            return;
-        }
-
-        if (shadow_tiff.values.size() == 0) {
-            shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
-        }
-        MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
-        status.percent_clouds = utils::percent_non_zero(cloud_tiff.values);
-        if (status.shadows_computed) {
-            status.percent_shadows = utils::percent_non_zero(shadow_tiff.values);
-        }
-        status.percent_invalid = utils::percent_non_zero(mask);
-        if (status.percent_invalid >= skip_threshold) {
-            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
-            // Even though we are skipping spatial approximation, we still want to record stats about this date
+        utils::CloudShadowStatus status;
+        {
             std::lock_guard<std::mutex> lock(mutex);
-            results.emplace(folder.filename().string(), status);
+            status = db.get_status(folder.filename().string());
+        }
+        if (!(status.clouds_exist && status.shadows_exist)) {
+            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
             return;
+        }
+        if (status.percent_invalid > skip_threshold) {
+            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+            return;
+        }
+
+        MatX<bool> clouds;
+        MatX<bool> shadows;
+        utils::GeoTIFF<u8> cloud_tiff;
+        if (status.clouds_exist) {
+            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
+        }
+        if (status.shadows_exist) {
+            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
+        } else {
+            shadows.setZero(clouds.rows(), clouds.cols());
+        }
+        MatX<bool> mask = clouds.array() || shadows.array();
+
+        std::unordered_map<std::string, int> existing_data;
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Laplace, false);
         }
         for (auto const& band : band_names) {
-            fs::path output_path = output_dir / fs::path(fmt::format("{}.tif", band));
-            if (use_cache && fs::exists(output_path)) {
-                status.bands_computed.push_back(band);
+            if (use_cache && existing_data.contains(band)) {
                 continue;
             }
 
             fs::path input_path = folder / fs::path(fmt::format("{}.tif", band));
             utils::GeoTIFF<f64> values(input_path);
             fill_missing_portion_smooth_boundary(values.values, mask);
-            values.write(output_dir / fs::path(fmt::format("{}.tif", band)));
-            status.bands_computed.push_back(band);
-        }
 
-        std::lock_guard<std::mutex> lock(mutex);
-        results.emplace(folder.filename().string(), status);
+            std::lock_guard<std::mutex> lock(mutex);
+            int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace, false);
+            values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
+        }
 
         logger->info("Finished folder: {}", folder);
     });
-
-    db.write_approx_results(results);
 }
 }

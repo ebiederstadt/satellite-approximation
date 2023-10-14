@@ -4,6 +4,7 @@ add_library(cloud_shadow_detection STATIC
         source/automatic_detection.cpp
         source/CloudMask.cpp
         source/CloudShadowMatching.cpp
+        source/db.cpp
         source/ComputeEnvironment.cpp
         source/Functions.cpp
         source/GaussianBlur.cpp
@@ -34,5 +35,6 @@ target_link_libraries(
         Boost::boost
         OpenCL::Headers
         OpenCL::OpenCL
+        SQLite::SQLite3
 )
 target_include_directories(cloud_shadow_detection PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
