@@ -140,7 +140,6 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
     }
 
     DataBase db(base_folder);
-    std::unordered_map<utils::Date, Status> results;
 
     std::vector<fs::path> folders_to_process;
     for (auto const& path : fs::directory_iterator(base_folder)) {

@@ -38,7 +38,10 @@ DataBase::DataBase(fs::path base_path)
         throw utils::DBError("Failed to open db", rc, *logger);
     }
 
-    std::string sql = "SELECT clouds_computed, shadows_computed, percent_invalid FROM dates WHERE year=? AND month=? AND day=?;";
+    std::string sql = R"sql(
+SELECT clouds_computed, shadows_computed, percent_invalid, percent_invalid_noise_removed
+FROM dates WHERE year=? AND month=? AND day=?;
+)sql";
     stmt = std::make_unique<utils::StmtWrapper>(db, sql);
 }
 
@@ -68,6 +71,7 @@ CloudShadowStatus DataBase::get_status(std::string const& date_string)
     status.clouds_exist = (bool)sqlite3_column_int(stmt->stmt, 0);
     status.shadows_exist = (bool)sqlite3_column_int(stmt->stmt, 1);
     status.percent_invalid = sqlite3_column_double(stmt->stmt, 2);
+    status.percent_invalid_denoised = sqlite3_column_double(stmt->stmt, 3);
 
     sqlite3_reset(stmt->stmt);
     return status;

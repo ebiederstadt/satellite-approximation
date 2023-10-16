@@ -45,4 +45,5 @@ void highlight_area_replaced(MultiChannelImage &input_images, MultiChannelImage 
  * @return
  */
 std::string find_good_close_image(std::string const &date_string, bool use_denoised_data, f64 distance_weight, DataBase &db);
+void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, bool use_denoised_data, f64 distance_weight, f64 skip_threshold);
 }

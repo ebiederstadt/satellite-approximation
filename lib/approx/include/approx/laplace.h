@@ -31,5 +31,5 @@ ConnectedComponents find_connected_components(MatX<bool> const& invalid);
  */
 void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> const& invalid_pixels);
 
-void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold);
+void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold, bool use_denoised_data);
 }

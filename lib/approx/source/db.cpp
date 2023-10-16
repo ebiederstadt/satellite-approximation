@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS approximated_data(
     }
 }
 
-int DataBase::write_approx_results(std::string const& date_string, std::string const& band_name, approx::ApproxMethod method, bool using_denoised)
+int DataBase::write_approx_results(std::string const& date_string, std::string const& band_name, ApproxMethod method, bool using_denoised)
 {
     create_approx_table();
 
