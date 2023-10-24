@@ -35,11 +35,11 @@ bool missing_files(std::vector<std::string> const& files, Indices index)
     return files_missing;
 }
 
-utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index)
+utils::GeoTIFF<f64> compute_index(fs::path const& folder, fs::path const& template_path, Indices index, bool use_cache)
 {
     auto tiff_name = fmt::format("{}.tif", magic_enum::enum_name(index));
     fs::path tiff_path = folder / fs::path(tiff_name);
-    if (fs::exists(tiff_path)) {
+    if (use_cache && fs::exists(tiff_path)) {
         return { tiff_path };
     }
 

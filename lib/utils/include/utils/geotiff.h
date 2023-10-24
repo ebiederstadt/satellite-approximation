@@ -24,14 +24,11 @@ public:
     explicit GDALDatasetWrapper(std::string path);
     virtual ~GDALDatasetWrapper();
 
-    explicit operator GDALDataset*() { return dataset; }
     GDALDataset* operator->() { return dataset; }
 
 private:
     GDALDataset* dataset;
 };
-
-u64 const EPSG_WGS84 = 4326;
 
 // Helper to select the appropriate GDALDataType value from our
 // internal type

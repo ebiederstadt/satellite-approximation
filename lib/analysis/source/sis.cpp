@@ -146,7 +146,7 @@ void single_image_summary(
                         utils::GeoTIFF<f64> index_tiff = compute_index(folder, folder / "viewZenithMean.tif", index);
                         // Initially we assume that all pixels are valid
                         MatX<bool> valid_pixels = MatX<bool>::Ones(nrows, ncols);
-                        CloudShadowStatus status;
+                        utils::CloudShadowStatus status;
                         {
                             std::lock_guard<std::mutex> lock(mutex);
                             status = db.get_status(folder.filename().string());
@@ -256,7 +256,7 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
                         }
                         if (choice.exclude_shadow_pixels) {
                             fs::path shadow_path = folder / fs::path("shadow_mask.tif");
-                            CloudShadowStatus status;
+                            utils::CloudShadowStatus status;
                             {
                                 std::lock_guard<std::mutex> lock(mutex);
                                 status = db.get_status(folder.filename().string());

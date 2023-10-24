@@ -131,7 +131,7 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
     logger->debug("It took {} seconds to solve the problem", sw);
 }
 
-void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
+void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold, bool use_denoised_data)
 {
     logger->debug("Processing directory: {}", base_folder);
     if (!is_directory(base_folder)) {

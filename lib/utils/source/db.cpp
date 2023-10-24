@@ -11,7 +11,7 @@ StmtWrapper::StmtWrapper(sqlite3* db, std::string const& sql)
     int rc = sqlite3_prepare_v2(db, sql.c_str(), (int)sql.length(), &stmt, nullptr);
     if (rc != SQLITE_OK) {
         logger->error("Creating statement failed with error: {}", sqlite3_errmsg(db));
-        throw utils::DBError("Failed to prepare statement", rc);
+        throw utils::DBError("Failed to prepare statement", rc, *logger);
     }
 }
 

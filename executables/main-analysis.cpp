@@ -1,6 +1,5 @@
+#include "analysis/noise.h"
 #include <analysis/db.h>
-#include <analysis/noise.h>
-#include <analysis/sis.h>
 #include <analysis/utils.h>
 #include <filesystem>
 #include <gdal/gdal_priv.h>

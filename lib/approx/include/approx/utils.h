@@ -51,6 +51,10 @@ struct MultiChannelImage {
         : images(std::move(images))
     {
     }
+    MultiChannelImage(std::initializer_list<MatX<f64>> images)
+        : images(images)
+    {
+    }
     MultiChannelImage(size_t channels, Eigen::Index rows, Eigen::Index cols);
     MultiChannelImage() = default;
 

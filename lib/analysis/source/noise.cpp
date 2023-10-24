@@ -21,7 +21,7 @@ void remove_noise_in_clouds_and_shadows(fs::path folder, int min_region_size, bo
         }
     }
 
-    CloudShadowStatus status;
+    utils::CloudShadowStatus status;
     {
         std::lock_guard<std::mutex> lock(mutex);
         status = db.get_status(folder.filename());

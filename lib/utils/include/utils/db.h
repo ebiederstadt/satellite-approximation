@@ -15,6 +15,7 @@ class StmtWrapper {
 
 public:
     StmtWrapper(sqlite3* db, std::string const& sql);
+    StmtWrapper() = default;
     ~StmtWrapper() noexcept(false);
 
     StmtWrapper& operator=(StmtWrapper&&) noexcept;
