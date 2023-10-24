@@ -10,7 +10,7 @@ struct GenerateCloudMaskReturn {
 };
 
 struct GeneratedCloudMask {
-    cv::Mat cloudMask;
+    ImageBool cloudMask;
     ImageFloat blendedCloudProbability;
 };
 

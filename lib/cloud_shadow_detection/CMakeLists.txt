@@ -22,7 +22,6 @@ target_link_libraries(
         cloud_shadow_detection PRIVATE
         utils
         givdetypes::givdetypes
-        pybind11::pybind11
         bfg::lyra
         tomlplusplus::tomlplusplus
         Eigen3::Eigen

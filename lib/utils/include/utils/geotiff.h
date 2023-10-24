@@ -30,6 +30,8 @@ private:
     GDALDataset* dataset;
 };
 
+u64 const EPSG_WGS84 = 4326;
+
 // Helper to select the appropriate GDALDataType value from our
 // internal type
 template<typename ScalarT>

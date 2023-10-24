@@ -18,7 +18,6 @@ set(libraries
         range-v3::range-v3)
 target_link_libraries(main_cloud_detection
         ${libraries}
-        pybind11::headers
         opencv::opencv)
 
 add_executable(main_spatial_approximation main-spatial-approximation.cpp)

@@ -1,5 +1,4 @@
 #include "cloud_shadow_detection/automatic_detection.h"
-#include <pybind11/pybind11.h>
 #include <utils/fmt_filesystem.h>
 #include <utils/geotiff.h>
 
@@ -27,8 +26,6 @@ using namespace PotentialShadowMask;
 using namespace VectorGridOperations;
 using namespace CloudShadowMatching;
 using namespace ProbabilityRefinement;
-
-namespace py = pybind11;
 
 namespace remote_sensing {
 static constexpr int MinimimumCloudSizeForRayCasting = 3;
@@ -84,21 +81,9 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         throw std::runtime_error(fmt::format("Failed to open NIR file. Provided path: {}", params.nir_path));
     }
 
-    std::shared_ptr<ImageFloat> data_CLP;
-    try {
-        data_CLP = normalize(
-            Imageio::ReadSingleChannelUint8(params.clp_path),
-            std::numeric_limits<u8>::max());
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(fmt::format("Failed to open CLP file. Provided path: {}", params.clp_path));
-    }
-
-    std::shared_ptr<ImageFloat> data_CLD;
-    try {
-        data_CLD = normalize(ReadSingleChannelUint8(params.cld_path), 100u);
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(fmt::format("Failed to open CLD file. Provided path: {}", params.cld_path));
-    }
+    ImageFloat clp_data = normalize(utils::GeoTIFF<u8>(params.clp_path).values);
+    ImageFloat cld_data = normalize<u8>(utils::GeoTIFF<u8>(params.cld_path).values, 100u);
+    ImageUint scl_data = utils::GeoTIFF<u32>(params.scl_path).values;
 
     std::shared_ptr<ImageUint> data_SCL;
     try {
@@ -108,11 +93,11 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     }
 
     logger->debug(" --- Cloud Detection...");
-    GenerateCloudMaskReturn generated_cloud_mask
-        = GenerateCloudMask(data_CLP, data_CLD, data_SCL);
-    std::shared_ptr<ImageFloat>& BlendedCloudProbability
-        = generated_cloud_mask.blendedCloudProbability;
-    std::shared_ptr<ImageBool>& output_CM = generated_cloud_mask.cloudMask;
+    auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
+
+    std::shared_ptr<ImageFloat> BlendedCloudProbability
+        = std::make_shared<ImageFloat>(generated_cloud_mask.blendedCloudProbability);
+    std::shared_ptr<ImageBool> output_CM = std::make_shared<ImageBool>(generated_cloud_mask.cloudMask);
 
     utils::GeoTIFF<u8> template_geotiff(params.nir_path);
     try {
@@ -259,6 +244,26 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     }
 }
 
+void detect_single_folder(fs::path directory, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)
+{
+    logger->debug("Starting calculation");
+    spdlog::stopwatch sw;
+    CloudParams params;
+    params.nir_path = directory / fs::path("B08.tif");
+    params.clp_path = directory / fs::path("CLP.tif");
+    params.cld_path = directory / fs::path("CLD.tif");
+    params.scl_path = directory / fs::path("SCL.tif");
+    params.rgb_path = directory / fs::path("RGB.tif");
+    params.view_zenith_path = directory / fs::path("viewZenithMean.tif");
+    params.view_azimuth_path = directory / fs::path("viewAzimuthMean.tif");
+    params.sun_zenith_path = directory / fs::path("sunZenithAngles.tif");
+    params.sun_azimuth_path = directory / fs::path("sunAzimuthAngles.tif");
+
+    detect(params, diagonal_distance, skipShadowDetection, use_cache);
+
+    logger->debug("Finished in {:.2f}", sw);
+}
+
 void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDetection skipShadowDetection,
     bool use_cache)
 {
@@ -272,11 +277,6 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
     logger->debug("Starting calculation");
     spdlog::stopwatch sw;
     for (auto const& directory : directories) {
-        // Handle CTRL+C in our application
-        if (PyErr_CheckSignals() != 0) {
-            throw py::error_already_set();
-        }
-
         logger->info("Calculating for {}", directory.filename());
         CloudParams params;
         params.nir_path = directory / fs::path("B08.tif");

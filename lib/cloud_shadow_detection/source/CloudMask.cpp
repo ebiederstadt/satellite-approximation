@@ -39,8 +39,7 @@ GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CL
     Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
                         || GenerateMask(SCL, CLOUD_LOW_MASK | CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
-    Image<bool> cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
-    cv::eigen2cv(cloudMask, ret.cloudMask);
+    ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
     return ret;
 }
 
@@ -52,14 +51,14 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, 
     Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
                         || GenerateMask(SCL, CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
-    Image<bool> cloudMask = mask.cast<float>().array() >= 0.1f;
+    ret.cloudMask = mask.cast<float>().array() >= 0.1f;
 
     // Clean up result using image processing techniques
     cv::Mat input_output;
     cv::MorphShapes morph_shape = cv::MorphShapes::MORPH_ELLIPSE;
     int dilation_size = 15;
     cv::Mat kernel = cv::getStructuringElement(morph_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
-    cv::eigen2cv(cloudMask.cast<u8>().eval(), input_output);
+    cv::eigen2cv(ret.cloudMask.cast<u8>().eval(), input_output);
 
     cv::dilate(input_output, input_output, kernel);
 
@@ -69,7 +68,7 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, 
 
     cv::GaussianBlur(input_output, input_output, {11, 11}, 0.0);
 
-    ret.cloudMask = input_output;
+    cv::cv2eigen(input_output, ret.cloudMask);
     return ret;
 }
 

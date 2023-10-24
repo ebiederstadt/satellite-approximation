@@ -33,5 +33,6 @@ struct SkipShadowDetection {
 
 f32 get_diagonal_distance(f64 min_long, f64 min_lat, f64 max_long, f64 max_lat);
 void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache);
+void detect_single_folder(fs::path directory, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache);
 void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache);
 }
