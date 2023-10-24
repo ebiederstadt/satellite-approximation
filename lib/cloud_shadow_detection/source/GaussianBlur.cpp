@@ -125,9 +125,9 @@ std::shared_ptr<ImageFloat> GaussianBlurFilter(std::shared_ptr<ImageFloat> in, f
     copy(kernel_cpu.begin(), kernel_cpu.end(), kernel_strip.begin(), CommandQueue);
 
     // Define our compute sizes
-    const size_t global_work_size[2]
+    size_t const global_work_size[2]
         = { ceilingMultiple<size_t>(in->cols(), 8), ceilingMultiple<size_t>(in->rows(), 8) };
-    const size_t local_work_size[2] = { 8, 8 };
+    size_t const local_work_size[2] = { 8, 8 };
 
     // Horizontal
     try {
@@ -162,6 +162,61 @@ std::shared_ptr<ImageFloat> GaussianBlurFilter(std::shared_ptr<ImageFloat> in, f
     // Return value
     std::shared_ptr<ImageFloat> ret = std::make_shared<ImageFloat>(in->rows(), in->cols());
     copy(image1.begin(), image1.end(), ret->data(), CommandQueue);
+    return ret;
+}
+
+ImageFloat GaussianBlurFilter(ImageFloat const& in, float sigma)
+{
+    // Size the data properly and/or upload
+    if (image1.size() != in.size()) {
+        image1 = vector<float>(in.size(), Context);
+        image2 = vector<float>(in.size(), Context);
+    }
+    copy(in.data(), in.data() + in.size(), image1.begin(), CommandQueue);
+
+    // Generate our kernel (1D)
+    std::vector<float> kernel_cpu = StripKernel(sigma);
+    if (kernel_strip.size() != kernel_cpu.size())
+        kernel_strip = vector<float>(kernel_cpu.size(), Context);
+    copy(kernel_cpu.begin(), kernel_cpu.end(), kernel_strip.begin(), CommandQueue);
+
+    // Define our compute sizes
+    size_t const global_work_size[2]
+        = { ceilingMultiple<size_t>(in.cols(), 8), ceilingMultiple<size_t>(in.rows(), 8) };
+    size_t const local_work_size[2] = { 8, 8 };
+
+    // Horizontal
+    try {
+        KernelHorizontal.set_arg(0, image1.get_buffer());
+        KernelHorizontal.set_arg(1, int(in.cols()));
+        KernelHorizontal.set_arg(2, int(in.rows()));
+        KernelHorizontal.set_arg(3, kernel_strip.get_buffer());
+        KernelHorizontal.set_arg(4, int(kernel_cpu.size()) - 1);
+        KernelHorizontal.set_arg(5, image2.get_buffer());
+        CommandQueue.enqueue_nd_range_kernel(
+            KernelHorizontal, 2, 0, global_work_size, local_work_size);
+        CommandQueue.finish();
+    } catch (opencl_error error) {
+        spdlog::error("OpenCL Error: {} returned {}", error.what(), error.error_string());
+    }
+
+    // Vertical
+    try {
+        KernelVertical.set_arg(0, image2.get_buffer());
+        KernelVertical.set_arg(1, int(in.cols()));
+        KernelVertical.set_arg(2, int(in.rows()));
+        KernelVertical.set_arg(3, kernel_strip.get_buffer());
+        KernelVertical.set_arg(4, int(kernel_cpu.size()) - 1);
+        KernelVertical.set_arg(5, image1.get_buffer());
+        CommandQueue.enqueue_nd_range_kernel(
+            KernelVertical, 2, 0, global_work_size, local_work_size);
+        CommandQueue.finish();
+    } catch (opencl_error error) {
+        spdlog::error("OpenCL Error: {} returned {}", error.what(), error.error_string());
+    }
+
+    ImageFloat ret(in.rows(), in.cols());
+    copy(image1.begin(), image1.end(), ret.data(), CommandQueue);
     return ret;
 }
 } // namespace GaussianBlur

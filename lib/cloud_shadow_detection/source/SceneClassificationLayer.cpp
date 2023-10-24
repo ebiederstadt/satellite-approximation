@@ -1,7 +1,8 @@
 #include "cloud_shadow_detection/SceneClassificationLayer.h"
 
+namespace SceneClassificationLayer {
 std::shared_ptr<ImageBool>
-SceneClassificationLayer::GenerateMask(std::shared_ptr<ImageUint> A, unsigned int channelCodes)
+GenerateMask(std::shared_ptr<ImageUint> A, unsigned int channelCodes)
 {
     std::shared_ptr<ImageBool> ret = std::make_shared<ImageBool>(A->rows(), A->cols());
     for (int i = 0; i < ret->size(); i++)
@@ -49,7 +50,55 @@ SceneClassificationLayer::GenerateMask(std::shared_ptr<ImageUint> A, unsigned in
     return ret;
 }
 
-std::shared_ptr<ImageUint> SceneClassificationLayer::GenerateRGBA(std::shared_ptr<ImageUint> A)
+ImageBool GenerateMask(ImageUint const& A, unsigned int channelCodes)
+{
+    ImageBool ret(A.rows(), A.cols());
+    for (int i = 0; i < ret.size(); i++)
+        switch (A.data()[i]) {
+        case NO_DATA_VALUE:
+            ret.data()[i] = (channelCodes & NO_DATA_MASK) > 0;
+            break;
+        case SATURATED_DEFECTIVE_VALUE:
+            ret.data()[i] = (channelCodes & SATURATED_DEFECTIVE_MASK) > 0;
+            break;
+        case DARK_AREA_PIXELS_VALUE:
+            ret.data()[i] = (channelCodes & DARK_AREA_PIXELS_MASK) > 0;
+            break;
+        case CLOUD_SHADOWS_VALUE:
+            ret.data()[i] = (channelCodes & CLOUD_SHADOWS_MASK) > 0;
+            break;
+        case VEGITATION_VALUE:
+            ret.data()[i] = (channelCodes & VEGITATION_MASK) > 0;
+            break;
+        case BARE_SOIL_VALUE:
+            ret.data()[i] = (channelCodes & BARE_SOIL_MASK) > 0;
+            break;
+        case WATER_VALUE:
+            ret.data()[i] = (channelCodes & WATER_MASK) > 0;
+            break;
+        case CLOUD_LOW_VALUE:
+            ret.data()[i] = (channelCodes & CLOUD_LOW_MASK) > 0;
+            break;
+        case CLOUD_MEDIUM_VALUE:
+            ret.data()[i] = (channelCodes & CLOUD_MEDIUM_MASK) > 0;
+            break;
+        case CLOUD_HIGH_VALUE:
+            ret.data()[i] = (channelCodes & CLOUD_HIGH_MASK) > 0;
+            break;
+        case CLOUD_CIRRUS_VALUE:
+            ret.data()[i] = (channelCodes & CLOUD_CIRRUS_MASK) > 0;
+            break;
+        case SNOW_ICE_VALUE:
+            ret.data()[i] = (channelCodes & SNOW_ICE_MASK) > 0;
+            break;
+        default:
+            ret.data()[i] = false;
+            break;
+        }
+    return ret;
+}
+
+std::shared_ptr<ImageUint> GenerateRGBA(std::shared_ptr<ImageUint> A)
 {
     std::shared_ptr<ImageUint> ret = std::make_shared<ImageUint>(A->rows(), A->cols());
     for (int i = 0; i < ret->size(); i++)
@@ -92,4 +141,5 @@ std::shared_ptr<ImageUint> SceneClassificationLayer::GenerateRGBA(std::shared_pt
             break;
         }
     return ret;
+}
 }

@@ -8,12 +8,13 @@ using namespace ImageOperations;
 using namespace GaussianBlur;
 using namespace SceneClassificationLayer;
 
-CloudMask::GenerateCloudMaskReturn CloudMask::GenerateCloudMask(
+namespace CloudMask {
+GenerateCloudMaskReturn GenerateCloudMask(
     std::shared_ptr<ImageFloat> CLP,
     std::shared_ptr<ImageFloat> CLD,
     std::shared_ptr<ImageUint> SCL)
 {
-    CloudMask::GenerateCloudMaskReturn ret;
+    GenerateCloudMaskReturn ret;
     ret.blendedCloudProbability = GaussianBlurFilter(CLP, 4.f);
     ret.cloudMask = Threshold(
         GaussianBlurFilter(
@@ -25,7 +26,31 @@ CloudMask::GenerateCloudMaskReturn CloudMask::GenerateCloudMask(
     return ret;
 }
 
-CloudMask::PartitionCloudMaskReturn CloudMask::PartitionCloudMask(
+GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CLD, ImageUint const& SCL)
+{
+    GeneratedCloudMask ret;
+    ret.blendedCloudProbability = GaussianBlurFilter(CLP, 4.f);
+    // clang-format off
+    Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
+                        || GenerateMask(SCL, CLOUD_LOW_MASK | CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
+    // clang-format on
+    ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    return ret;
+}
+
+GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const &CLP, ImageFloat const &CLD, ImageUint const &SCL)
+{
+    GeneratedCloudMask ret;
+    ret.blendedCloudProbability = GaussianBlurFilter(CLP, 4.f);
+    // clang-format off
+    Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
+                        || GenerateMask(SCL, CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
+    // clang-format on
+    ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    return ret;
+}
+
+PartitionCloudMaskReturn PartitionCloudMask(
     std::shared_ptr<ImageBool> CloudMaskData,
     float DiagonalLength,
     unsigned int min_cloud_area)
@@ -70,4 +95,5 @@ CloudMask::PartitionCloudMaskReturn CloudMask::PartitionCloudMask(
         }
     }
     return ret;
+}
 }

@@ -42,5 +42,6 @@ static unsigned int const CLOUD_CIRRUS_COLOUR = 0xff00ffff;        // YELLOW
 static unsigned int const SNOW_ICE_COLOUR = 0xffffff00;            // LIGHT BLUE
 
 std::shared_ptr<ImageBool> GenerateMask(std::shared_ptr<ImageUint> A, unsigned int channelCode);
+ImageBool GenerateMask(ImageUint const& A, unsigned int channelCodes);
 std::shared_ptr<ImageUint> GenerateRGBA(std::shared_ptr<ImageUint> A);
 } // namespace SceneClassificationLayer
