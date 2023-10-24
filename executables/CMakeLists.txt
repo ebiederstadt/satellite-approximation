@@ -16,7 +16,9 @@ set(libraries
         OpenCL::Headers
         OpenCL::OpenCL
         range-v3::range-v3)
-target_link_libraries(main_cloud_detection ${libraries})
+target_link_libraries(main_cloud_detection
+        ${libraries}
+        opencv::opencv)
 
 add_executable(main_spatial_approximation main-spatial-approximation.cpp)
 target_link_libraries(main_spatial_approximation

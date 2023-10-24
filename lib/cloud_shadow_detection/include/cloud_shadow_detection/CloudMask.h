@@ -1,6 +1,8 @@
 #pragma once
 #include "types.h"
 
+#include <opencv2/opencv.hpp>
+
 namespace CloudMask {
 struct GenerateCloudMaskReturn {
     std::shared_ptr<ImageBool> cloudMask;
@@ -8,7 +10,7 @@ struct GenerateCloudMaskReturn {
 };
 
 struct GeneratedCloudMask {
-    ImageBool cloudMask;
+    cv::Mat cloudMask;
     ImageFloat blendedCloudProbability;
 };
 

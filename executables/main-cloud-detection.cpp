@@ -4,6 +4,7 @@
 #include <cloud_shadow_detection/ImageOperations.h>
 #include <cloud_shadow_detection/PitFillAlgorithm.h>
 #include <gdal/gdal_priv.h>
+#include <opencv2/core/eigen.hpp>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 
@@ -23,9 +24,6 @@ int main()
     MatX<float> clp = normalize(utils::GeoTIFF<u8>(base_folder / "CLP.tif").values);
     MatX<u32> scl = utils::GeoTIFF<u32>(base_folder / "SCL.tif").values;
 
-    auto result = CloudMask::GenerateCloudMask(clp, cld, scl);
-    tiff.values = result.cloudMask.cast<u8>();
-
     auto new_result = CloudMask::GenerateCloudMaskIgnoreLowProbability(clp, cld, scl);
 
     fs::path output_dir = base_folder / "testing_cloud_detection";
@@ -34,8 +32,5 @@ int main()
         fs::create_directory(output_dir);
     }
 
-    tiff.write(output_dir / "old_mask.tif");
-
-    tiff.values = new_result.cloudMask.cast<u8>();
-    tiff.write(output_dir / "new_mask.tif");
+    tiff.write(new_result.cloudMask, output_dir / "final_result.tif");
 }

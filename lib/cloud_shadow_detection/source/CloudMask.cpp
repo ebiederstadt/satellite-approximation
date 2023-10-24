@@ -4,6 +4,11 @@
 #include "cloud_shadow_detection/ImageOperations.h"
 #include "cloud_shadow_detection/SceneClassificationLayer.h"
 
+#include <givde/types.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/imgproc.hpp>
+
+using namespace givde;
 using namespace ImageOperations;
 using namespace GaussianBlur;
 using namespace SceneClassificationLayer;
@@ -34,11 +39,12 @@ GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CL
     Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
                         || GenerateMask(SCL, CLOUD_LOW_MASK | CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
-    ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    Image<bool> cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    cv::eigen2cv(cloudMask, ret.cloudMask);
     return ret;
 }
 
-GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const &CLP, ImageFloat const &CLD, ImageUint const &SCL)
+GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, ImageFloat const& CLD, ImageUint const& SCL)
 {
     GeneratedCloudMask ret;
     ret.blendedCloudProbability = GaussianBlurFilter(CLP, 4.f);
@@ -46,7 +52,24 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const &CLP, 
     Image<bool> mask = (ret.blendedCloudProbability.array() >= .5f && CLD.array() >= .2f).array()
                         || GenerateMask(SCL, CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
-    ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    Image<bool> cloudMask = mask.cast<float>().array() >= 0.1f;
+
+    // Clean up result using image processing techniques
+    cv::Mat input_output;
+    cv::MorphShapes morph_shape = cv::MorphShapes::MORPH_ELLIPSE;
+    int dilation_size = 15;
+    cv::Mat kernel = cv::getStructuringElement(morph_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
+    cv::eigen2cv(cloudMask.cast<u8>().eval(), input_output);
+
+    cv::dilate(input_output, input_output, kernel);
+
+    int close_size = 5;
+    kernel = cv::getStructuringElement(morph_shape, { 2 * close_size + 1, 2 * close_size + 1 });
+    cv::morphologyEx(input_output, input_output, cv::MORPH_CLOSE, kernel);
+
+    cv::GaussianBlur(input_output, input_output, {11, 11}, 0.0);
+
+    ret.cloudMask = input_output;
     return ret;
 }
 
