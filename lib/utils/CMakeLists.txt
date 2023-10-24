@@ -12,4 +12,5 @@ target_include_directories(utils PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURC
 target_link_libraries(utils
         givdetypes::givdetypes
         GDAL::GDAL
-        spdlog::spdlog)
+        spdlog::spdlog
+        opencv::opencv)

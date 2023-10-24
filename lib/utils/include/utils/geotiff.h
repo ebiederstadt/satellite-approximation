@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <gdal/gdal_priv.h>
 #include <givde/types.hpp>
+#include <opencv2/opencv.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <type_traits>
@@ -174,6 +175,53 @@ public:
             this->width, this->height,
             const_cast<void*>(static_cast<void const*>(this->values.data())),
             this->width, this->height,
+            type.type,
+            0, 0, 0);
+
+        if (err != CE_None) {
+            logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
+            throw std::runtime_error("Unable to write raster image");
+        }
+        poDstDS->FlushCache();
+    }
+
+    void write(cv::Mat const& matrix, fs::path const& pathOfDestination, int bandIndex = 1) const
+    {
+        char const* pszFormat = "GTiff";
+        GDALDriver* poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
+        if (poDriver == nullptr) {
+            throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
+        }
+        char** papszMetadata = poDriver->GetMetadata();
+        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
+            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
+            return;
+        }
+
+        // Use a unique_ptr to manage lifetime
+        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poSrcDS {
+            static_cast<GDALDataset*>(GDALOpen(m_path.c_str(), GA_ReadOnly)),
+            GDALClose
+        };
+
+        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poDstDS {
+            poDriver->CreateCopy(pathOfDestination.c_str(), poSrcDS.get(), TRUE, nullptr, nullptr, nullptr),
+            GDALClose
+        };
+
+        GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
+        logger->debug(
+            "Writing to file. CRS.Name: {}, RasterCount: {}",
+            dataSetCRS.GetName(),
+            poDstDS->GetRasterCount());
+
+        GDALTypeForOurType<ScalarT> type;
+        auto err = band->RasterIO(
+            GF_Write,
+            0, 0,
+            matrix.cols, matrix.rows,
+            const_cast<void*>(static_cast<void const*>(matrix.data)),
+            matrix.cols, matrix.rows,
             type.type,
             0, 0, 0);
 
