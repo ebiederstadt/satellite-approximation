@@ -102,7 +102,6 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     utils::GeoTIFF<u8> template_geotiff(params.nir_path);
     try {
         template_geotiff.values = output_CM->cast<u8>();
-        template_geotiff.values.colwise().reverseInPlace();
         template_geotiff.write(params.cloud_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
