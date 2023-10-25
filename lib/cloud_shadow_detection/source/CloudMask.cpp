@@ -56,16 +56,19 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, 
     // Clean up result using image processing techniques
     cv::Mat input_output;
     cv::MorphShapes morph_shape = cv::MorphShapes::MORPH_ELLIPSE;
-    int dilation_size = 15;
-    cv::Mat kernel = cv::getStructuringElement(morph_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
     cv::eigen2cv(ret.cloudMask.cast<u8>().eval(), input_output);
 
+    // dilate to take care of boundary clouds that are missed by the SCL mask
+    int dilation_size = 15;
+    cv::Mat kernel = cv::getStructuringElement(morph_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
     cv::dilate(input_output, input_output, kernel);
 
+    // Close to remove holes in the generated mask
     int close_size = 5;
     kernel = cv::getStructuringElement(morph_shape, { 2 * close_size + 1, 2 * close_size + 1 });
     cv::morphologyEx(input_output, input_output, cv::MORPH_CLOSE, kernel);
 
+    // Blur to clean up the edges
     cv::GaussianBlur(input_output, input_output, { 11, 11 }, 0.0);
 
     cv::cv2eigen(input_output, ret.cloudMask);
