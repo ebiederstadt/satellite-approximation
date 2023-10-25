@@ -10,6 +10,6 @@ struct PotentialShadowMaskGenerationReturn {
 };
 PotentialShadowMaskGenerationReturn GeneratePotentialShadowMask(
     std::shared_ptr<ImageFloat> NIR,
-    std::shared_ptr<ImageBool> CloudMask,
+    ImageBool const& CloudMask,
     std::shared_ptr<ImageUint> SCL);
 } // namespace PotentialShadowMask

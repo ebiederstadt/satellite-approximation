@@ -31,9 +31,9 @@ std::shared_ptr<ImageFloat> ProbabilityRefinement::AlphaMap(
 std::shared_ptr<ImageFloat> ProbabilityRefinement::BetaMap(
     ShadowQuads shadows,
     std::map<int, CloudShadowMatching::OptimalSolution> solutions,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageFloat> CLP,
+    ImageFloat const& CLP,
     float DiagonalLength)
 {
     static float const min_distance = 5.f;
@@ -42,8 +42,8 @@ std::shared_ptr<ImageFloat> ProbabilityRefinement::BetaMap(
     static float const min_factor = .15f;
     static float const area_correction_factor = 2.f * M_2_SQRTPI;
 
-    std::shared_ptr<ImageBool> map = std::make_shared<ImageBool>(CLP->rows(), CLP->cols());
-    std::shared_ptr<ImageFloat> ret = std::make_shared<ImageFloat>(CLP->rows(), CLP->cols());
+    std::shared_ptr<ImageBool> map = std::make_shared<ImageBool>(CLP.rows(), CLP.cols());
+    std::shared_ptr<ImageFloat> ret = std::make_shared<ImageFloat>(CLP.rows(), CLP.cols());
     ret->fill(0.f);
 
     for (auto& s : shadows) {
@@ -56,13 +56,13 @@ std::shared_ptr<ImageFloat> ProbabilityRefinement::BetaMap(
         int influence_distance_i = int(floorf(influence_distance_f));
         ImageBounds influence_bounds
             = { { (unsigned int)(std::clamp(
-                      int(s.second.pixels.bounds.p0.x) - influence_distance_i, 0, int(CLP->cols()) - 1)),
+                      int(s.second.pixels.bounds.p0.x) - influence_distance_i, 0, int(CLP.cols()) - 1)),
                     (unsigned int)(std::clamp(
-                        int(s.second.pixels.bounds.p0.y) - influence_distance_i, 0, int(CLP->rows()) - 1)) },
+                        int(s.second.pixels.bounds.p0.y) - influence_distance_i, 0, int(CLP.rows()) - 1)) },
                   { (unsigned int)(std::clamp(
-                        int(s.second.pixels.bounds.p1.x) + influence_distance_i, 0, int(CLP->cols()) - 1)),
+                        int(s.second.pixels.bounds.p1.x) + influence_distance_i, 0, int(CLP.cols()) - 1)),
                       (unsigned int)(std::clamp(
-                          int(s.second.pixels.bounds.p1.y) + influence_distance_i, 0, int(CLP->rows()) - 1)) } };
+                          int(s.second.pixels.bounds.p1.y) + influence_distance_i, 0, int(CLP.rows()) - 1)) } };
         // We onluy need to check borders for distance
         Shadow shadow_border = border(s.second.pixels);
         // Reset map for shadow;
@@ -225,22 +225,21 @@ ProbabilityRefinement::UniformProbabilitySurface ProbabilityRefinement::Probabil
     return ret;
 }
 
-std::shared_ptr<ImageBool> ProbabilityRefinement::ImprovedShadowMask(
+ImageBool ProbabilityRefinement::ImprovedShadowMask(
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageFloat> alphaMap,
     std::shared_ptr<ImageFloat> betaMap,
     UniformProbabilitySurface probabilitySurface,
     float threshold)
 {
-    std::shared_ptr<ImageBool> ret
-        = std::make_shared<ImageBool>(shadowMask->rows(), shadowMask->cols());
-    ret->fill(false);
+    ImageBool ret(shadowMask->rows(), shadowMask->cols());
+    ret.fill(false);
     for (int i = 0; i < shadowMask->cols(); i++)
         for (int j = 0; j < shadowMask->rows(); j++)
             if (threshold <= probabilitySurface(ImOp::at(alphaMap, i, j), ImOp::at(betaMap, i, j)))
                 ImOp::set(ret, i, j, true);
-    return ImOp::AND(ImOp::OR(ret, shadowMask), ImOp::NOT(cloudMask));
+    return (ret.array() || shadowMask->array()) && !cloudMask.array();
 }
 
 ProbabilityRefinement::UniformProbabilitySurface::UniformProbabilitySurface() { }

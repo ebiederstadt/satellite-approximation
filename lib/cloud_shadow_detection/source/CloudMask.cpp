@@ -66,19 +66,19 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, 
     kernel = cv::getStructuringElement(morph_shape, { 2 * close_size + 1, 2 * close_size + 1 });
     cv::morphologyEx(input_output, input_output, cv::MORPH_CLOSE, kernel);
 
-    cv::GaussianBlur(input_output, input_output, {11, 11}, 0.0);
+    cv::GaussianBlur(input_output, input_output, { 11, 11 }, 0.0);
 
     cv::cv2eigen(input_output, ret.cloudMask);
     return ret;
 }
 
 PartitionCloudMaskReturn PartitionCloudMask(
-    std::shared_ptr<ImageBool> CloudMaskData,
+    ImageBool const& CloudMaskData,
     float DiagonalLength,
     unsigned int min_cloud_area)
 {
     PartitionCloudMaskReturn ret;
-    ret.map = std::make_shared<ImageInt>(CloudMaskData->rows(), CloudMaskData->cols());
+    ret.map = std::make_shared<ImageInt>(CloudMaskData.rows(), CloudMaskData.cols());
     ret.map->fill(-1);
     std::vector<glm::uvec2> current_cloud_pixels;
     CloudQuad cloud_temp;

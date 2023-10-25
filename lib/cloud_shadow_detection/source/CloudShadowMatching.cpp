@@ -13,7 +13,7 @@ __SimilarityComparision__Return __SimilarityComparision__(
     CloudQuad cloud,
     glm::mat4 M,
     std::shared_ptr<ImageInt> cloudMap,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageBool> potentialShadow,
     float DiagonalLength)
 {
@@ -115,7 +115,7 @@ struct __MatchCloudShadow__Ret {
 __MatchCloudShadow__Ret __MatchCloudShadow__(
     CloudQuad cloud,
     std::shared_ptr<ImageInt> cloudMap,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageBool> potentialShadow,
     float DiagonalLength,
     glm::vec3 sunPos,
@@ -168,7 +168,7 @@ __MatchCloudShadow__Ret __MatchCloudShadow__(
 MatchCloudsShadowsResults MatchCloudsShadows(
     CloudQuads clouds,
     std::shared_ptr<ImageInt> cloudMap,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageBool> potentialShadow,
     float DiagonalLength,
     glm::vec3 sunPos,
@@ -176,7 +176,7 @@ MatchCloudsShadowsResults MatchCloudsShadows(
 {
     MatchCloudsShadowsResults ret;
     ret.trimmedMeanHeight = 0.f;
-    ret.shadowMask = std::make_shared<ImageBool>(cloudMask->rows(), cloudMask->cols());
+    ret.shadowMask = std::make_shared<ImageBool>(cloudMask.rows(), cloudMask.cols());
     ret.shadowMask->fill(false);
     std::vector<float> heights;
     heights.reserve(clouds.size());

@@ -79,6 +79,35 @@ flood(std::shared_ptr<ImageBool> A, unsigned int i_start, unsigned int j_start)
     return pixelList;
 }
 
+std::vector<glm::uvec2> flood(ImageBool const& A, unsigned int i_start, unsigned int j_start)
+{
+    std::queue<glm::uvec2> queue;
+    queue.push(glm::uvec2(i_start, j_start));
+    glm::uvec2 current;
+    std::vector<glm::uvec2> pixelList;
+    ImageBool used(A.rows(), A.cols());
+    used.fill(false);
+    set(used, i_start, j_start, true);
+    do {
+        current = queue.front();
+        queue.pop();
+        if (at(A, current.x, current.y)) {
+            pixelList.push_back(current);
+            for (int i = std::max(0, int(current.x) - 1);
+                 i < std::min(int(A.cols()), int(current.x) + 2); i++) {
+                for (int j = std::max(0, int(current.y) - 1);
+                     j < std::min(int(A.rows()), int(current.y) + 2); j++) {
+                    if (!at(used, i, j)) { // Not already considered
+                        queue.push(glm::uvec2(i, j));
+                        set(used, i, j, true);
+                    }
+                }
+            }
+        }
+    } while (!queue.empty());
+    return pixelList;
+}
+
 std::shared_ptr<ImageFloat> SUBTRACT(std::shared_ptr<ImageFloat> A, std::shared_ptr<ImageFloat> B)
 {
     if (!DIM_CHECK(A, B))
@@ -164,6 +193,11 @@ unsigned int CoverCount(std::shared_ptr<ImageBool> A) { return A->cast<unsigned 
 float CoverPercentage(std::shared_ptr<ImageBool> A)
 {
     return A->cast<float>().sum() / float(A->size());
+}
+
+float CoverPercentage(ImageBool const& A)
+{
+    return A.cast<float>().sum() / float(A.size());
 }
 
 unsigned int SubCoverCount(std::shared_ptr<ImageBool> A, ImageBounds bounds)

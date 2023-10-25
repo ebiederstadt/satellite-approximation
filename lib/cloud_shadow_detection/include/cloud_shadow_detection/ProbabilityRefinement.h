@@ -11,9 +11,9 @@ std::shared_ptr<ImageFloat> AlphaMap(std::shared_ptr<ImageFloat> NIR_difference)
 std::shared_ptr<ImageFloat> BetaMap(
     ShadowQuads shadows,
     std::map<int, CloudShadowMatching::OptimalSolution> solutions,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageFloat> CLP,
+    ImageFloat const& CLP,
     float DiagonalLength);
 
 enum class Bounds { ALPHA_MIN,
@@ -52,9 +52,9 @@ UniformProbabilitySurface ProbabilityMap(
     std::shared_ptr<ImageBool> shadowMask,
     std::shared_ptr<ImageFloat> alphaMap,
     std::shared_ptr<ImageFloat> betaMap);
-std::shared_ptr<ImageBool> ImprovedShadowMask(
+ImageBool ImprovedShadowMask(
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageBool> cloudMask,
+    ImageBool const& cloudMask,
     std::shared_ptr<ImageFloat> alphaMap,
     std::shared_ptr<ImageFloat> betaMap,
     UniformProbabilitySurface probabilitySurface,
