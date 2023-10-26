@@ -74,23 +74,10 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     GaussianBlur::init();
     PitFillAlgorithm::init();
 
-    std::shared_ptr<ImageFloat> data_NIR;
-    try {
-        data_NIR = normalize(ReadSingleChannelUint16(params.nir_path));
-    } catch (...) {
-        throw std::runtime_error(fmt::format("Failed to open NIR file. Provided path: {}", params.nir_path));
-    }
-
     ImageFloat clp_data = normalize(utils::GeoTIFF<u8>(params.clp_path).values);
     ImageFloat cld_data = normalize<u8>(utils::GeoTIFF<u8>(params.cld_path).values, 100u);
     ImageUint scl_data = utils::GeoTIFF<u32>(params.scl_path).values;
-
-    std::shared_ptr<ImageUint> data_SCL;
-    try {
-        data_SCL = ReadSingleChannelUint8(params.scl_path);
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(fmt::format("Failed to open SCL file. Provided path: {}", params.scl_path));
-    }
+    ImageFloat nir_data = normalize(utils::GeoTIFF<u16>(params.nir_path).values);
 
     logger->debug(" --- Cloud Detection...");
     auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
@@ -117,17 +104,15 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     logger->debug(" --- Cloud Partitioning...");
     // Using the Cloud mask, partition it into individual clouds with collections and a map
     PartitionCloudMaskReturn PartitionCloudMask_Return
-        = PartitionCloudMask(generated_cloud_mask.cloudMask, diagonal_distance, MinimimumCloudSizeForRayCasting);
+        = PartitionCloudMask(generated_cloud_mask.cloudMaskNoProcessing, diagonal_distance, MinimimumCloudSizeForRayCasting);
     CloudQuads& Clouds = PartitionCloudMask_Return.clouds;
     std::shared_ptr<ImageInt>& CloudsMap = PartitionCloudMask_Return.map;
 
     logger->debug(" --- Potential Shadow Mask Generation...");
     // Generate the Candidate (or Potential) Shadow Mask
-    PotentialShadowMaskGenerationReturn GeneratePotentialShadowMask_Return
-        = GeneratePotentialShadowMask(data_NIR, generated_cloud_mask.cloudMask, data_SCL);
-    std::shared_ptr<ImageBool> output_PSM = GeneratePotentialShadowMask_Return.mask;
-    std::shared_ptr<ImageFloat> DeltaNIR
-        = GeneratePotentialShadowMask_Return.difference_of_pitfill_NIR;
+    auto GeneratePotentialShadowMask_Return
+        = GeneratePotentialShadowMask(nir_data, generated_cloud_mask.cloudMaskNoProcessing, scl_data);
+    std::shared_ptr<ImageBool> output_PSM = std::make_shared<ImageBool>(GeneratePotentialShadowMask_Return.mask);
 
     // Load everything that we need for
     std::shared_ptr<ImageFloat> data_SunZenith;
@@ -178,7 +163,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     logger->debug(" --- Object-based Shadow Mask Generation...");
     // Solve for the optimal shadow matching results per cloud
     MatchCloudsShadowsResults MatchCloudsShadows_Return = MatchCloudsShadows(
-        Clouds, CloudsMap, generated_cloud_mask.cloudMask, output_PSM, diagonal_distance, SunPosition, ViewPosition);
+        Clouds, CloudsMap, generated_cloud_mask.cloudMaskNoProcessing, output_PSM, diagonal_distance, SunPosition, ViewPosition);
     std::map<int, OptimalSolution>& OptimalCloudCastingSolutions
         = MatchCloudsShadows_Return.solutions;
     ShadowQuads& CloudCastedShadows = MatchCloudsShadows_Return.shadows;
@@ -186,11 +171,11 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
 
     logger->debug(" --- Generating Probability Function...");
     // Generate the Alpha and Beta maps to produce the probability surface
-    std::shared_ptr<ImageFloat> output_Alpha = ProbabilityRefinement::AlphaMap(DeltaNIR);
+    ImageFloat output_Alpha = ProbabilityRefinement::AlphaMap(GeneratePotentialShadowMask_Return.difference_of_pitfill_NIR);
     std::shared_ptr<ImageFloat> output_Beta = ProbabilityRefinement::BetaMap(
         CloudCastedShadows,
         OptimalCloudCastingSolutions,
-        generated_cloud_mask.cloudMask,
+        generated_cloud_mask.cloudMaskNoProcessing,
         output_OSM,
         generated_cloud_mask.blendedCloudProbability,
         diagonal_distance);
@@ -210,7 +195,6 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     logger->debug("Saving shadow results");
     try {
         template_geotiff.values = output_PSM->cast<u8>();
-        template_geotiff.values.colwise().reverseInPlace();
         template_geotiff.write(params.shadow_potential_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
@@ -220,7 +204,6 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
 
     try {
         template_geotiff.values = output_OSM->cast<u8>();
-        template_geotiff.values.colwise().reverseInPlace();
         template_geotiff.write(params.object_based_shadow_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
@@ -230,7 +213,6 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
 
     try {
         template_geotiff.values = output_FSM.cast<u8>();
-        template_geotiff.values.colwise().reverseInPlace();
         template_geotiff.write(params.shadow_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(

@@ -52,6 +52,7 @@ GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, 
                         || GenerateMask(SCL, CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
     ret.cloudMask = mask.cast<float>().array() >= 0.1f;
+    ret.cloudMaskNoProcessing = ret.cloudMask;
 
     // Clean up result using image processing techniques
     cv::Mat input_output;

@@ -6,7 +6,7 @@
 
 namespace ProbabilityRefinement {
 // Shadow Value Map
-std::shared_ptr<ImageFloat> AlphaMap(std::shared_ptr<ImageFloat> NIR_difference);
+ImageFloat AlphaMap(ImageFloat const& NIR_difference);
 // Shadow Projected Probability Map
 std::shared_ptr<ImageFloat> BetaMap(
     ShadowQuads shadows,
@@ -50,12 +50,12 @@ UniformProbabilitySurface testMap();
 
 UniformProbabilitySurface ProbabilityMap(
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageFloat> alphaMap,
+    ImageFloat const& alphaMap,
     std::shared_ptr<ImageFloat> betaMap);
 ImageBool ImprovedShadowMask(
     std::shared_ptr<ImageBool> shadowMask,
     ImageBool const& cloudMask,
-    std::shared_ptr<ImageFloat> alphaMap,
+    ImageFloat const& alphaMap,
     std::shared_ptr<ImageFloat> betaMap,
     UniformProbabilitySurface probabilitySurface,
     float threshold);

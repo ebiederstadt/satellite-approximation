@@ -12,8 +12,7 @@ using namespace Functions;
 
 float __f__(float x, float a, float b) { return 1.0 / (1.0 + b * exp(-a * x)); }
 
-std::shared_ptr<ImageFloat> ProbabilityRefinement::AlphaMap(
-    std::shared_ptr<ImageFloat> NIR_difference)
+ImageFloat ProbabilityRefinement::AlphaMap(ImageFloat const& NIR_difference)
 {
     // Setup
     float a = 17.f, b = .007f;
@@ -21,10 +20,9 @@ std::shared_ptr<ImageFloat> ProbabilityRefinement::AlphaMap(
     float sub = f(-.5f);
     float denom = 1.f;
 #define F(x) (f(x - .5f) - sub) * denom;
-    std::shared_ptr<ImageFloat> ret
-        = std::make_shared<ImageFloat>(NIR_difference->rows(), NIR_difference->cols());
-    for (int i = 0; i < ret->size(); i++)
-        ret->data()[i] = F(NIR_difference->data()[i]);
+    ImageFloat ret(NIR_difference.rows(), NIR_difference.cols());
+    for (int i = 0; i < ret.size(); i++)
+        ret.data()[i] = F(NIR_difference.data()[i]);
     return ret;
 }
 
@@ -189,7 +187,7 @@ __ProbabilityMap__Element(std::vector<glm::vec3>& samples, unsigned int D)
 
 ProbabilityRefinement::UniformProbabilitySurface ProbabilityRefinement::ProbabilityMap(
     std::shared_ptr<ImageBool> shadowMask,
-    std::shared_ptr<ImageFloat> alphaMap,
+    ImageFloat const& alphaMap,
     std::shared_ptr<ImageFloat> betaMap)
 {
     static unsigned int const D[] = { 8u, 16u, 32u, 64u, 128u };
@@ -198,7 +196,7 @@ ProbabilityRefinement::UniformProbabilitySurface ProbabilityRefinement::Probabil
     std::vector<glm::vec3> samples;
     for (int i = 0; i < shadowMask->size(); i++)
         samples.push_back(
-            { alphaMap->data()[i], betaMap->data()[i], shadowMask->data()[i] ? 1.f : 0.f });
+            { alphaMap.data()[i], betaMap->data()[i], shadowMask->data()[i] ? 1.f : 0.f });
 
     UniformProbabilitySurface elements[5];
 
@@ -228,7 +226,7 @@ ProbabilityRefinement::UniformProbabilitySurface ProbabilityRefinement::Probabil
 ImageBool ProbabilityRefinement::ImprovedShadowMask(
     std::shared_ptr<ImageBool> shadowMask,
     ImageBool const& cloudMask,
-    std::shared_ptr<ImageFloat> alphaMap,
+    ImageFloat const& alphaMap,
     std::shared_ptr<ImageFloat> betaMap,
     UniformProbabilitySurface probabilitySurface,
     float threshold)

@@ -11,6 +11,7 @@ struct GenerateCloudMaskReturn {
 
 struct GeneratedCloudMask {
     ImageBool cloudMask;
+    ImageBool cloudMaskNoProcessing;
     ImageFloat blendedCloudProbability;
 };
 

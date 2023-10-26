@@ -119,9 +119,9 @@ PitFillAlgorithmFilter(std::shared_ptr<ImageFloat> in, float borderValue)
 
     // Define our compute sizes
     // Define our compute sizes
-    const size_t global_work_size[2]
+    size_t const global_work_size[2]
         = { ceilingMultiple<size_t>(in->cols(), 8), ceilingMultiple<size_t>(in->rows(), 8) };
-    const size_t local_work_size[2] = { 8, 8 };
+    size_t const local_work_size[2] = { 8, 8 };
 
     vector<float>* source = &image2;
     vector<float>* destin = &image1;
@@ -156,6 +156,56 @@ PitFillAlgorithmFilter(std::shared_ptr<ImageFloat> in, float borderValue)
     // Return Value
     std::shared_ptr<ImageFloat> ret = std::make_shared<ImageFloat>(in->rows(), in->cols());
     copy(destin->begin(), destin->end(), ret->data(), CommandQueue);
+    return ret;
+}
+
+ImageFloat PitFillAlgorithmFilter(ImageFloat const& in, float borderValue)
+{
+    std::vector<float> initv(in.size(), 1.f);
+    if (image1.size() != in.size()) {
+        image1 = vector<float>(in.size(), Context);
+        original = vector<float>(in.size(), Context);
+        image2 = vector<float>(in.size(), Context);
+    }
+    copy(in.data(), in.data() + in.size(), original.begin(), CommandQueue);
+    copy(initv.data(), initv.data() + initv.size(), image1.begin(), CommandQueue);
+
+    // Define our compute sizes
+    // Define our compute sizes
+    size_t const global_work_size[2]
+        = { ceilingMultiple<size_t>(in.cols(), 8), ceilingMultiple<size_t>(in.rows(), 8) };
+    size_t const local_work_size[2] = { 8, 8 };
+
+    vector<float>* source = &image2;
+    vector<float>* destin = &image1;
+
+    std::vector<int> hasChanged_host = { 0 };
+
+    do {
+        hasChanged_host[0] = 0;
+        copy(hasChanged_host.begin(), hasChanged_host.end(), hasChanged.begin(), CommandQueue);
+        vector<float>* temp = destin;
+        destin = source;
+        source = temp;
+        try {
+            Kernel.set_arg(0, source->get_buffer());
+            Kernel.set_arg(1, int(in.cols()));
+            Kernel.set_arg(2, int(in.rows()));
+            Kernel.set_arg(3, original.get_buffer());
+            Kernel.set_arg(4, borderValue);
+            Kernel.set_arg(5, hasChanged.get_buffer());
+            Kernel.set_arg(6, destin->get_buffer());
+            CommandQueue.enqueue_nd_range_kernel(Kernel, 2, 0, global_work_size, local_work_size);
+            CommandQueue.finish();
+        } catch (opencl_error error) {
+            spdlog::error("OpenCL Error: {} returned {}", error.what(), error.error_string());
+        }
+        copy(hasChanged.begin(), hasChanged.end(), hasChanged_host.begin(), CommandQueue);
+    } while (hasChanged_host[0]);
+
+    // Return Value
+    ImageFloat ret(in.rows(), in.cols());
+    copy(destin->begin(), destin->end(), ret.data(), CommandQueue);
     return ret;
 }
 } // namespace PitFillAlgorithm
