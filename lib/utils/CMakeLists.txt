@@ -6,6 +6,7 @@ add_library(utils
         source/error.cpp
         source/filesystem.cpp
         source/geotiff.cpp
+        source/indices.cpp
         source/log.cpp)
 target_include_directories(utils PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
@@ -13,4 +14,5 @@ target_link_libraries(utils
         givdetypes::givdetypes
         GDAL::GDAL
         spdlog::spdlog
-        opencv::opencv)
+        opencv::opencv
+        magic_enum::magic_enum)

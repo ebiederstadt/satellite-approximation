@@ -34,7 +34,7 @@ SELECT band_name FROM approximated_data WHERE year=? AND month=? AND day=? AND s
 
 void DataBase::prepare_stmt(
     std::string sql_string,
-    Indices index,
+    utils::Indices index,
     f64 threshold,
     int start_year,
     int end_year,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS single_image_summary(
 }
 
 std::optional<int> DataBase::result_exists(
-    Indices index,
+    utils::Indices index,
     f64 threshold,
     int start_year,
     int end_year,
@@ -119,7 +119,7 @@ WHERE index_name=? AND threshold=? AND start_year=? AND end_year=? AND use_appro
 }
 
 int DataBase::save_result_in_table(
-    Indices index,
+    utils::Indices index,
     f64 threshold,
     int start_year,
     int end_year,
@@ -154,7 +154,7 @@ RETURNING id;
     return result;
 }
 
-int DataBase::index_table_helper(std::string const& date_string, Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, utils::StmtWrapper &stmt)
+int DataBase::index_table_helper(std::string const& date_string, utils::Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, utils::StmtWrapper &stmt)
 {
     std::string sql_string = R"sql(
 CREATE TABLE IF NOT EXISTS index_data(
@@ -196,7 +196,7 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     return idx + 1;
 }
 
-void DataBase::store_index_info(std::string const& date_string, Indices index, MatX<f64> const& index_matrix, MatX<bool> const& valid_pixels, UseRealData choice)
+void DataBase::store_index_info(std::string const& date_string, utils::Indices index, MatX<f64> const& index_matrix, MatX<bool> const& valid_pixels, UseRealData choice)
 {
     MatX<f64> masked_index = valid_pixels.select(index_matrix, MatX<f64>::Constant(index_matrix.rows(), index_matrix.cols(), NO_DATA_INDICATOR));
     VecX<f64> selected_elements = selectMatrixElements(masked_index, NO_DATA_INDICATOR);
@@ -215,7 +215,7 @@ void DataBase::store_index_info(std::string const& date_string, Indices index, M
     }
 }
 
-void DataBase::store_index_info(std::string const& date_string, analysis::Indices index, MatX<f64> const& index_matrix, DataChoices choice)
+void DataBase::store_index_info(std::string const& date_string, utils::Indices index, MatX<f64> const& index_matrix, DataChoices choice)
 {
     bool use_approx_data;
     std::visit(Visitor {

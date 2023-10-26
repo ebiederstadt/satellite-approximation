@@ -80,11 +80,11 @@ PYBIND11_MODULE(_core, m)
     m.def("fill_missing_data_folder", &approx::fill_missing_data_folder,
         "base_folder"_a, "band_names"_a, "use_cache"_a, "skip_threshold"_a);
 
-    py::enum_<analysis::Indices>(m, "Indices")
-        .value("NDVI", analysis::Indices::NDVI)
-        .value("NDMI", analysis::Indices::NDMI)
-        .value("mNDWI", analysis::Indices::mNDWI)
-        .value("SWI", analysis::Indices::SWI);
+    py::enum_<utils::Indices>(m, "Indices")
+        .value("NDVI", utils::Indices::NDVI)
+        .value("NDMI", utils::Indices::NDMI)
+        .value("mNDWI", utils::Indices::mNDWI)
+        .value("SWI", utils::Indices::SWI);
 
     py::class_<analysis::UseApproximatedData>(m, "UseApproximatedData")
         .def(py::init<>());

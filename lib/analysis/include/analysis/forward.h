@@ -3,7 +3,6 @@
 #include <variant>
 
 namespace analysis {
-enum class Indices;
 class DataBase;
 
 struct UseApproximatedData;

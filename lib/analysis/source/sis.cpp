@@ -50,7 +50,7 @@ void single_image_summary(
     bool use_cache,
     int start_year,
     int end_year,
-    Indices index,
+    utils::Indices index,
     f64 threshold,
     DataChoices choices)
 {
@@ -143,7 +143,7 @@ void single_image_summary(
                             return;
                         }
 
-                        utils::GeoTIFF<f64> index_tiff = compute_index(folder, folder / "viewZenithMean.tif", index);
+                        utils::GeoTIFF<f64> index_tiff = utils::compute_index(folder, folder / "viewZenithMean.tif", index);
                         // Initially we assume that all pixels are valid
                         MatX<bool> valid_pixels = MatX<bool>::Ones(nrows, ncols);
                         utils::CloudShadowStatus status;
@@ -224,7 +224,7 @@ void single_image_summary(
     example_tiff.write(base_path / count_string(id));
 }
 
-void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, Indices index, DataBase& db, DataChoices choices)
+void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, utils::Indices index, DataBase& db, DataChoices choices)
 {
     int num_computed = 0;
     auto index_name = fmt::format("{}.tif", magic_enum::enum_name(index));
@@ -247,7 +247,7 @@ void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_proce
                     },
                     [&](UseRealData const& choice) {
                         index_path = folder;
-                        approx_data = required_files(index);
+                        approx_data = utils::required_files(index);
                         if (choice.exclude_cloudy_pixels) {
                             fs::path cloud_path = folder / fs::path("cloud_mask.tif");
                             utils::GeoTIFF<u8> cloud_tiff(cloud_path);

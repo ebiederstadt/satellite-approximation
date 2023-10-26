@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <givde/types.hpp>
+#include <utils/indices.h>
 #include <variant>
 
 #include "forward.h"
@@ -18,10 +19,10 @@ void single_image_summary(
     bool use_cache,
     int start_year,
     int end_year,
-    Indices index,
+    utils::Indices index,
     f64 threshold,
     DataChoices choices);
 
-void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, Indices index, DataBase &db, DataChoices choices);
+void compute_indices_for_all_dates(std::vector<fs::path> const& folders_to_process, utils::Indices index, DataBase& db, DataChoices choices);
 
 }
