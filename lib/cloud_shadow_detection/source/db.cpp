@@ -21,26 +21,6 @@ void DataBase::write_detection_results(std::unordered_map<utils::Date, Status> c
     logger->debug("Writing {} results.", results.size());
 
     std::string sql = R"sql(
-CREATE TABLE IF NOT EXISTS dates(
-    year INTEGER NOT NULL,
-    month INTEGER NOT NULL,
-    day INTEGER NOT NULL,
-    clouds_computed INTEGER,
-    shadows_computed INTEGER,
-    percent_cloudy REAL,
-    percent_shadows REAL,
-    percent_invalid REAL,
-    percent_invalid_noise_removed REAL,
-    threshold_used_for_noise_removal REAL,
-    PRIMARY KEY(year, month, day));
-)sql";
-
-    int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
-    if (rc != SQLITE_OK) {
-        throw utils::DBError("Failed to create dates table", rc, *logger);
-    }
-
-    sql = R"sql(
 INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(year, month, day) DO
@@ -54,21 +34,44 @@ UPDATE SET
     utils::StmtWrapper stmt(db, sql);
 
     for (auto const& [date, status] : results) {
-        int index = date.bind_sql(stmt.stmt, 1);
-        sqlite3_bind_int(stmt.stmt, index, (int)status.clouds_computed);
-        sqlite3_bind_int(stmt.stmt, index + 1, (int)status.shadows_computed);
-        sqlite3_bind_double(stmt.stmt, index + 2, status.percent_clouds);
-        if (status.percent_shadows.has_value())
-            sqlite3_bind_double(stmt.stmt, index + 3, *status.percent_shadows);
-        else
-            sqlite3_bind_null(stmt.stmt, index + 3);
-        sqlite3_bind_double(stmt.stmt, index + 4, status.percent_invalid);
-        rc = sqlite3_step(stmt.stmt);
-        if (rc != SQLITE_DONE) {
-            throw utils::DBError("First insert failed", rc, *logger);
-        }
-        sqlite3_reset(stmt.stmt);
+        insert_into_table(date, status);
     }
+}
+
+void DataBase::write_detection_result(utils::Date const& date, Status const& status)
+{
+    insert_into_table(date, status);
+}
+
+void DataBase::insert_into_table(utils::Date const& date, remote_sensing::Status const& status)
+{
+    std::string sql = R"sql(
+INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(year, month, day) DO
+UPDATE SET
+    clouds_computed = excluded.clouds_computed,
+    shadows_computed = excluded.shadows_computed,
+    percent_cloudy = excluded.percent_cloudy,
+    percent_shadows = excluded.percent_shadows,
+    percent_invalid = excluded.percent_invalid;
+)sql";
+    utils::StmtWrapper stmt(db, sql);
+
+    int index = date.bind_sql(stmt.stmt, 1);
+    sqlite3_bind_int(stmt.stmt, index, (int)status.clouds_computed);
+    sqlite3_bind_int(stmt.stmt, index + 1, (int)status.shadows_computed);
+    sqlite3_bind_double(stmt.stmt, index + 2, status.percent_clouds);
+    if (status.percent_shadows.has_value())
+        sqlite3_bind_double(stmt.stmt, index + 3, *status.percent_shadows);
+    else
+        sqlite3_bind_null(stmt.stmt, index + 3);
+    sqlite3_bind_double(stmt.stmt, index + 4, status.percent_invalid);
+    int rc = sqlite3_step(stmt.stmt);
+    if (rc != SQLITE_DONE) {
+        throw utils::DBError("First insert failed", rc, *logger);
+    }
+    sqlite3_reset(stmt.stmt);
 }
 
 std::unordered_map<utils::Date, Status> get_detection_results(fs::path base_folder)

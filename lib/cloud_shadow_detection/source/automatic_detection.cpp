@@ -8,6 +8,7 @@
 
 #include "cloud_shadow_detection/Functions.h"
 #include "cloud_shadow_detection/ProbabilityRefinement.h"
+#include "cloud_shadow_detection/db.h"
 #include <cloud_shadow_detection/CloudMask.h>
 #include <cloud_shadow_detection/CloudShadowMatching.h>
 #include <cloud_shadow_detection/ComputeEnvironment.h>
@@ -63,16 +64,18 @@ f32 get_diagonal_distance(f64 min_long, f64 min_lat, f64 max_long, f64 max_lat)
         { max_long, max_lat });
 }
 
-void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)
+std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)
 {
     if (use_cache && fs::exists(params.cloud_path()) && fs::exists(params.shadow_path())) {
         logger->debug("Skipping {} because both the clouds and the shadows have been computed", params.cloud_path().parent_path());
-        return;
+        return {};
     }
 
     ComputeEnvironment::InitMainContext();
     GaussianBlur::init();
     PitFillAlgorithm::init();
+
+    Status status;
 
     ImageFloat clp_data = normalize(*ReadSingleChannelUint8(params.clp_path));
     ImageFloat cld_data = normalize(*ReadSingleChannelUint8(params.cld_path), 100u);
@@ -81,6 +84,10 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
 
     logger->debug(" --- Cloud Detection...");
     auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
+
+    status.clouds_computed = true;
+    status.percent_clouds = utils::percent_non_zero(generated_cloud_mask.cloudMask);
+    status.percent_invalid = status.percent_clouds;
 
     utils::GeoTIFF<u8> template_geotiff(params.nir_path);
     try {
@@ -97,7 +104,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         f64 percent = utils::percent_non_zero(generated_cloud_mask.cloudMask);
         if (percent >= skipShadowDetection.threshold) {
             logger->debug("Skipping {} because too much of the image is cloudy ({:.2f}% cloudy)", params.cloud_path().parent_path(), percent * 100);
-            return;
+            return status;
         }
     }
 
@@ -192,6 +199,11 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
         ProbabilityFunctionThreshold);
     logger->debug("...Finished Algorithm.");
 
+    status.shadows_computed = true;
+    status.percent_shadows = utils::percent_non_zero(output_FSM);
+    ImageBool total_mask = generated_cloud_mask.cloudMask.array() || output_FSM.array();
+    status.percent_invalid = utils::percent_non_zero(total_mask);
+
     logger->debug("Saving shadow results");
     try {
         template_geotiff.values = output_PSM->cast<u8>().colwise().reverse();
@@ -219,6 +231,8 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
             fmt::format("Failed to write final shadow mask. Path: {}. Message: {}", params.cloud_path(),
                 e.what()));
     }
+
+    return status;
 }
 
 void detect_single_folder(fs::path directory, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)
@@ -236,7 +250,13 @@ void detect_single_folder(fs::path directory, f32 diagonal_distance, SkipShadowD
     params.sun_zenith_path = directory / fs::path("sunZenithAngles.tif");
     params.sun_azimuth_path = directory / fs::path("sunAzimuthAngles.tif");
 
-    detect(params, diagonal_distance, skipShadowDetection, use_cache);
+    auto status = detect(params, diagonal_distance, skipShadowDetection, use_cache);
+
+    // The result DB should be in the parent folder
+    DataBase db(directory.parent_path());
+    if (status.has_value()) {
+        db.write_detection_result(utils::Date(directory.filename().string()), *status);
+    }
 
     logger->debug("Finished in {:.2f}", sw);
 }
@@ -250,6 +270,8 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
             directories.push_back(folder);
         }
     }
+
+    std::unordered_map<utils::Date, Status> results;
 
     logger->debug("Starting calculation");
     spdlog::stopwatch sw;
@@ -266,8 +288,15 @@ void detect_in_folder(fs::path folder_path, f32 diagonal_distance, SkipShadowDet
         params.sun_zenith_path = directory / fs::path("sunZenithAngles.tif");
         params.sun_azimuth_path = directory / fs::path("sunAzimuthAngles.tif");
 
-        detect(params, diagonal_distance, skipShadowDetection, use_cache);
+        auto status = detect(params, diagonal_distance, skipShadowDetection, use_cache);
+        if (status.has_value()) {
+            results.emplace(utils::Date(directory.filename().string()), *status);
+        }
     }
+
+    DataBase db(folder_path);
+    db.write_detection_results(results);
+
     logger->info("Finished computing");
     logger->debug("Finished in {}", sw);
 }

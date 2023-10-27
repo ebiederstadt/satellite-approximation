@@ -38,6 +38,8 @@ DataBase::DataBase(fs::path base_path)
         throw utils::DBError("Failed to open db", rc, *logger);
     }
 
+    create_table();
+
     std::string sql = R"sql(
 SELECT clouds_computed, shadows_computed, percent_invalid, percent_invalid_noise_removed
 FROM dates WHERE year=? AND month=? AND day=?;
@@ -75,5 +77,28 @@ CloudShadowStatus DataBase::get_status(std::string const& date_string)
 
     sqlite3_reset(stmt->stmt);
     return status;
+}
+
+void DataBase::create_table()
+{
+    std::string sql = R"sql(
+CREATE TABLE IF NOT EXISTS dates(
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    clouds_computed INTEGER,
+    shadows_computed INTEGER,
+    percent_cloudy REAL,
+    percent_shadows REAL,
+    percent_invalid REAL,
+    percent_invalid_noise_removed REAL,
+    threshold_used_for_noise_removal REAL,
+    PRIMARY KEY(year, month, day));
+)sql";
+
+    int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
+    if (rc != SQLITE_OK) {
+        throw utils::DBError("Failed to create dates table", rc, *logger);
+    }
 }
 }

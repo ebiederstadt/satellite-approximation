@@ -45,6 +45,8 @@ PotentialShadowMaskGenerated GeneratePotentialShadowMask(
     // 3. Use sentinel 1 data to learn about which pixels are likely to contain water
     // 4. Use DEM data to learn about where the depressions are in the landscape, which give additional support for potential water pixels
 
+    // As such
+
     return { Result_mask, NIR_difference, NIR_pitfilled };
 }
 }

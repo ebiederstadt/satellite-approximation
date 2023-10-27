@@ -43,6 +43,8 @@ public:
 protected:
     sqlite3* db = nullptr;
 
+    void create_table();
+
 private:
     fs::path db_path;
     std::unique_ptr<StmtWrapper> stmt;

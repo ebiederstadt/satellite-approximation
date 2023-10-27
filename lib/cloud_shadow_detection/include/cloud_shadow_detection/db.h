@@ -15,9 +15,14 @@ struct Status {
     bool shadows_computed = false;
 };
 
-struct DataBase : utils::DataBase {
+class DataBase : utils::DataBase {
+public:
     explicit DataBase(fs::path path);
     void write_detection_results(std::unordered_map<utils::Date, Status> const& results);
+    void write_detection_result(utils::Date const &date, Status const &status);
+
+private:
+    void insert_into_table(utils::Date const &date, Status const &status);
 };
 
 std::unordered_map<utils::Date, Status> get_detection_results(fs::path base_folder);
