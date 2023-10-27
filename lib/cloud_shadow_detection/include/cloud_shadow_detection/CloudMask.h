@@ -15,11 +15,6 @@ struct GeneratedCloudMask {
     ImageFloat blendedCloudProbability;
 };
 
-GenerateCloudMaskReturn GenerateCloudMask(
-    std::shared_ptr<ImageFloat> CLP,
-    std::shared_ptr<ImageFloat> CLD,
-    std::shared_ptr<ImageUint> SCL);
-
 GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CLD, ImageUint const& SCL);
 GeneratedCloudMask GenerateCloudMaskIgnoreLowProbability(ImageFloat const& CLP, ImageFloat const& CLD, ImageUint const& SCL);
 

@@ -162,34 +162,14 @@ obscure(std::shared_ptr<Image<T>> A, std::shared_ptr<ImageBool> Mask, T replace)
 }
 
 template<class T>
-std::shared_ptr<std::pair<std::vector<T>, std::vector<T>>>
-partitionUnobscuredObscured(std::shared_ptr<Image<T>> A, std::shared_ptr<ImageBool> Mask)
-{
-    if (!DIM_CHECK<T, bool>(A, Mask))
-        return nullptr;
-    std::shared_ptr<std::pair<std::vector<T>, std::vector<T>>> ret
-        = std::make_shared<std::pair<std::vector<T>, std::vector<T>>>();
-    for (int i = 0; i < A->size(); i++) {
-        if (!Mask->data()[i])
-            ret->second.push_back(A->data()[i]);
-        else
-            ret->first.push_back(A->data()[i]);
-    }
-    return ret;
-}
-
-template<class T>
-std::pair<std::vector<T>, std::vector<T>>
-partitionUnobscuredObscured(Image<T> const& A, ImageBool const& Mask)
+std::vector<T> partitionUnobscuredObscured(Image<T> const& A, ImageBool const& Mask)
 {
     if (!DIM_CHECK<T, bool>(A, Mask))
         return {};
-    std::pair<std::vector<T>, std::vector<T>> ret;
+    std::vector<T> ret;
     for (int i = 0; i < A.size(); i++) {
-        if (!Mask.data()[i])
-            ret.second.push_back(A.data()[i]);
-        else
-            ret.first.push_back(A.data()[i]);
+        if (Mask.data()[i])
+            ret.push_back(A.data()[i]);
     }
     return ret;
 }

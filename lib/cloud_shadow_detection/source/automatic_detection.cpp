@@ -80,7 +80,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     ImageFloat nir_data = normalize(utils::GeoTIFF<u16>(params.nir_path).values);
 
     logger->debug(" --- Cloud Detection...");
-    auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
+    auto generated_cloud_mask = GenerateCloudMask(clp_data, cld_data, scl_data);
 
     utils::GeoTIFF<u8> template_geotiff(params.nir_path);
     try {

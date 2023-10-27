@@ -40,6 +40,7 @@ GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CL
                         || GenerateMask(SCL, CLOUD_LOW_MASK | CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK).array();
     // clang-format on
     ret.cloudMask = GaussianBlurFilter(mask.cast<float>(), 1.f).array() >= 0.1f;
+    ret.cloudMaskNoProcessing = ret.cloudMask;
     return ret;
 }
 
