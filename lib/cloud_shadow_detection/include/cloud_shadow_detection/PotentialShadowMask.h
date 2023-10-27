@@ -14,9 +14,4 @@ PotentialShadowMaskGenerated GeneratePotentialShadowMask(
     ImageFloat const& NIR,
     ImageBool const& CloudMask,
     ImageUint const& SCL);
-
-PotentialShadowMaskGenerated GeneratePotentialShadowMaskNew(
-    ImageFloat const& NIR,
-    ImageBool const& CloudMask,
-    ImageUint const& SCL);
 } // namespace PotentialShadowMask

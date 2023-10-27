@@ -2,16 +2,21 @@
 #include <cloud_shadow_detection/ComputeEnvironment.h>
 #include <cloud_shadow_detection/GaussianBlur.h>
 #include <cloud_shadow_detection/ImageOperations.h>
+#include <cloud_shadow_detection/Imageio.h>
 #include <cloud_shadow_detection/PitFillAlgorithm.h>
+#include <cloud_shadow_detection/PotentialShadowMask.h>
+#include <cloud_shadow_detection/automatic_detection.h>
+#include <gdal_priv.h>
 #include <cloud_shadow_detection/PotentialShadowMask.h>
 #include <cloud_shadow_detection/automatic_detection.h>
 #include <gdal/gdal_priv.h>
 #include <utils/eigen.h>
 #include <utils/geotiff.h>
-#include <utils/log.h>
 
 using namespace CloudMask;
 using namespace ImageOperations;
+using namespace PotentialShadowMask;
+using namespace Imageio;
 using namespace PotentialShadowMask;
 
 int main()

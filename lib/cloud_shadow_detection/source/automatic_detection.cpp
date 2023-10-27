@@ -74,17 +74,17 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     GaussianBlur::init();
     PitFillAlgorithm::init();
 
-    ImageFloat clp_data = normalize(utils::GeoTIFF<u8>(params.clp_path).values);
-    ImageFloat cld_data = normalize<u8>(utils::GeoTIFF<u8>(params.cld_path).values, 100u);
-    ImageUint scl_data = utils::GeoTIFF<u32>(params.scl_path).values;
-    ImageFloat nir_data = normalize(utils::GeoTIFF<u16>(params.nir_path).values);
+    ImageFloat clp_data = normalize(*ReadSingleChannelUint8(params.clp_path));
+    ImageFloat cld_data = normalize(*ReadSingleChannelUint8(params.cld_path), 100u);
+    ImageUint scl_data = *ReadSingleChannelUint8(params.scl_path);
+    ImageFloat nir_data = normalize(*ReadSingleChannelUint16(params.nir_path));
 
     logger->debug(" --- Cloud Detection...");
-    auto generated_cloud_mask = GenerateCloudMask(clp_data, cld_data, scl_data);
+    auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
 
     utils::GeoTIFF<u8> template_geotiff(params.nir_path);
     try {
-        template_geotiff.values = generated_cloud_mask.cloudMask.cast<u8>();
+        template_geotiff.values = generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse();
         template_geotiff.write(params.cloud_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
@@ -194,7 +194,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
 
     logger->debug("Saving shadow results");
     try {
-        template_geotiff.values = output_PSM->cast<u8>();
+        template_geotiff.values = output_PSM->cast<u8>().colwise().reverse();
         template_geotiff.write(params.shadow_potential_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
@@ -203,7 +203,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     }
 
     try {
-        template_geotiff.values = output_OSM->cast<u8>();
+        template_geotiff.values = output_OSM->cast<u8>().colwise().reverse();
         template_geotiff.write(params.object_based_shadow_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(
@@ -212,7 +212,7 @@ void detect(CloudParams const& params, f32 diagonal_distance, SkipShadowDetectio
     }
 
     try {
-        template_geotiff.values = output_FSM.cast<u8>();
+        template_geotiff.values = output_FSM.cast<u8>().colwise().reverse();
         template_geotiff.write(params.shadow_path());
     } catch (std::runtime_error const& e) {
         throw std::runtime_error(

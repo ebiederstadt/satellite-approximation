@@ -4,11 +4,6 @@
 #include <opencv2/opencv.hpp>
 
 namespace CloudMask {
-struct GenerateCloudMaskReturn {
-    std::shared_ptr<ImageBool> cloudMask;
-    std::shared_ptr<ImageFloat> blendedCloudProbability;
-};
-
 struct GeneratedCloudMask {
     ImageBool cloudMask;
     ImageBool cloudMaskNoProcessing;

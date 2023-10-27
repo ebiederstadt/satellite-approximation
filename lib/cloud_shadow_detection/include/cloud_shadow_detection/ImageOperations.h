@@ -211,7 +211,7 @@ normalize(std::shared_ptr<ImageFloat> A, float max = std::numeric_limits<float>:
 template<typename T>
 ImageFloat normalize(Image<T> const& image, T max = std::numeric_limits<T>::max())
 {
-    return (image.template cast<float>() / static_cast<float>(max)).template cast<float>();
+    return image.template cast<float>() / static_cast<float>(max);
 }
 
 std::shared_ptr<ImageFloat> toDegrees(std::shared_ptr<ImageFloat> A);

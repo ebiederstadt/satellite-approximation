@@ -14,23 +14,6 @@ using namespace GaussianBlur;
 using namespace SceneClassificationLayer;
 
 namespace CloudMask {
-GenerateCloudMaskReturn GenerateCloudMask(
-    std::shared_ptr<ImageFloat> CLP,
-    std::shared_ptr<ImageFloat> CLD,
-    std::shared_ptr<ImageUint> SCL)
-{
-    GenerateCloudMaskReturn ret;
-    ret.blendedCloudProbability = GaussianBlurFilter(CLP, 4.f);
-    ret.cloudMask = Threshold(
-        GaussianBlurFilter(
-            cast<float, bool>(
-                OR(AND(Threshold(ret.blendedCloudProbability, .5f), Threshold(CLD, .2f)),
-                    GenerateMask(SCL, CLOUD_LOW_MASK | CLOUD_MEDIUM_MASK | CLOUD_HIGH_MASK))),
-            1.f),
-        .1f);
-    return ret;
-}
-
 GeneratedCloudMask GenerateCloudMask(ImageFloat const& CLP, ImageFloat const& CLD, ImageUint const& SCL)
 {
     GeneratedCloudMask ret;
