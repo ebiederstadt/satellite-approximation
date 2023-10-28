@@ -198,18 +198,8 @@ std::shared_ptr<ImageFloat> DIVIDE(std::shared_ptr<ImageFloat> A, std::shared_pt
 
 std::shared_ptr<ImageUint> ADD(std::shared_ptr<ImageUint> A, std::shared_ptr<ImageUint> B);
 
-std::shared_ptr<ImageFloat> normalize(
-    std::shared_ptr<ImageUint> A,
-    unsigned int max = std::numeric_limits<unsigned int>::max());
-
-std::shared_ptr<ImageFloat>
-normalize(std::shared_ptr<ImageInt> A, int max = std::numeric_limits<int>::max());
-
-std::shared_ptr<ImageFloat>
-normalize(std::shared_ptr<ImageFloat> A, float max = std::numeric_limits<float>::max());
-
-template<typename T>
-ImageFloat normalize(Image<T> const& image, T max = std::numeric_limits<T>::max())
+template<typename T, typename MaxType=T>
+ImageFloat normalize(Image<T> const& image, MaxType max = std::numeric_limits<T>::max())
 {
     return image.template cast<float>() / static_cast<float>(max);
 }

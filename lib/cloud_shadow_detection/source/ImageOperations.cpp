@@ -129,21 +129,6 @@ std::shared_ptr<ImageUint> ADD(std::shared_ptr<ImageUint> A, std::shared_ptr<Ima
     return std::make_shared<ImageUint>((*A) + (*B));
 }
 
-std::shared_ptr<ImageFloat> normalize(std::shared_ptr<ImageUint> A, unsigned int max)
-{
-    return std::make_shared<ImageFloat>(A->cast<float>() / float(max));
-}
-
-std::shared_ptr<ImageFloat> normalize(std::shared_ptr<ImageInt> A, int max)
-{
-    return std::make_shared<ImageFloat>(A->cast<float>() / float(max));
-}
-
-std::shared_ptr<ImageFloat> normalize(std::shared_ptr<ImageFloat> A, float max)
-{
-    return std::make_shared<ImageFloat>(*A / max);
-}
-
 std::shared_ptr<ImageFloat> toDegrees(std::shared_ptr<ImageFloat> A)
 {
     std::shared_ptr<ImageFloat> ret = std::make_shared<ImageFloat>(A->rows(), A->cols());
