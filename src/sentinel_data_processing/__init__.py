@@ -11,5 +11,9 @@ __all__ = [
     "Indices",
     "UseApproximatedData",
     "UseRealData",
-    "single_image_summary"
+    "single_image_summary",
+    "Date",
+    "DataBase",
+    "TimeSeries",
+    "Temporal"
 ]

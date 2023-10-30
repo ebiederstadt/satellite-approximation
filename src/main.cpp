@@ -10,6 +10,10 @@
 #include <analysis/utils.h>
 #include <approx/laplace.h>
 #include <cloud_shadow_detection/automatic_detection.h>
+#include <cloud_shadow_detection/db.h>
+#include <cloud_shadow_detection/temporal.h>
+#include <utils/date.h>
+#include <utils/log.h>
 
 namespace py = pybind11;
 using namespace py::literals;
@@ -33,7 +37,8 @@ PYBIND11_MODULE(_core, m)
         .value("Critical", spdlog::level::level_enum::critical);
     m.def("set_log_level", [](spdlog::level::level_enum level) {
         spdlog::set_level(level);
-        spdlog::info("Logging set to level: {}", to_short_c_str(level));
+        spdlog::info("Logging set to level: {}", to_string_view(level));
+        spdlog::info("Log location: {}", utils::log_location());
     });
 
     py::class_<remote_sensing::CloudParams>(m, "CloudParams")
@@ -68,17 +73,6 @@ PYBIND11_MODULE(_core, m)
             return input_image;
         },
         "input_image"_a, "invalid_pixels"_a);
-//    py::class_<approx::ConnectedComponents>(m, "ConnectedComponents")
-//        .def(py::init<MatX<i32>, std::unordered_map<i32, std::vector<approx::index_t>>>());
-
-//    m.def("find_connected_components", &approx::find_connected_components, "invalid_mask"_a);
-
-    py::class_<approx::Status>(m, "Status")
-        .def_readonly("percent_clouds", &approx::Status::percent_clouds)
-        .def_readonly("percent_shadows", &approx::Status::percent_shadows)
-        .def_readonly("band_computation_status", &approx::Status::bands_computed);
-    m.def("fill_missing_data_folder", &approx::fill_missing_data_folder,
-        "base_folder"_a, "band_names"_a, "use_cache"_a, "skip_threshold"_a);
 
     py::enum_<utils::Indices>(m, "Indices")
         .value("NDVI", utils::Indices::NDVI)
@@ -98,4 +92,28 @@ PYBIND11_MODULE(_core, m)
         });
     m.def("single_image_summary", &analysis::single_image_summary,
         "base_path"_a, "use_cache"_a, "start_year"_a, "end_year"_a, "index"_a, "threshold"_a, "data_choices"_a);
+
+    py::class_<utils::Date>(m, "Date")
+        .def(py::init<std::string const&>())
+        .def_readonly("year", &utils::Date::year)
+        .def_readonly("month", &utils::Date::month)
+        .def_readonly("day", &utils::Date::day)
+        .def("__repr__", [](utils::Date& self) {
+            return fmt::format("{}", self);
+        });
+
+    py::class_<remote_sensing::DataBase>(m, "DataBase")
+        .def(py::init<fs::path>());
+
+    py::class_<remote_sensing::TimeSeries>(m, "TimeSeries")
+        .def(py::init<>())
+        .def_readonly("values", &remote_sensing::TimeSeries::values)
+        .def_readonly("clouds", &remote_sensing::TimeSeries::clouds)
+        .def_readonly("dates", &remote_sensing::TimeSeries::dates);
+
+    py::class_<remote_sensing::Temporal>(m, "Temporal")
+        .def(py::init<remote_sensing::DataBase&>())
+        .def("nir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
+            return self.nir_for_location(base_folder, date_string, { lat, lng }, max_results);
+        }, "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a=15);
 }
