@@ -15,6 +15,7 @@ add_library(cloud_shadow_detection STATIC
         source/ProbabilityRefinement.cpp
         source/SceneClassificationLayer.cpp
         source/ShadowMaskEvaluation.cpp
+        source/temporal.cpp
         source/types.cpp
         source/VectorGridOperations.cpp)
 

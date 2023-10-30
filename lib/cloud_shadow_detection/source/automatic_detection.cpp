@@ -234,7 +234,7 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
     return status;
 }
 
-void detect_clouds(fs::path folder, DataBase const &db)
+void detect_clouds(fs::path folder, DataBase const& db)
 {
     Status status;
 

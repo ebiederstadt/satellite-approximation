@@ -6,10 +6,9 @@
 #include <cloud_shadow_detection/PitFillAlgorithm.h>
 #include <cloud_shadow_detection/PotentialShadowMask.h>
 #include <cloud_shadow_detection/automatic_detection.h>
-#include <gdal_priv.h>
-#include <cloud_shadow_detection/PotentialShadowMask.h>
-#include <cloud_shadow_detection/automatic_detection.h>
+#include <cloud_shadow_detection/temporal.h>
 #include <gdal/gdal_priv.h>
+#include <gdal_priv.h>
 #include <utils/eigen.h>
 #include <utils/geotiff.h>
 
@@ -26,6 +25,7 @@ int main()
     PitFillAlgorithm::init();
 
     GDALAllRegister();
+    spdlog::set_level(spdlog::level::debug);
     spdlog::info("Log location: {}", utils::log_location());
 
     // clang-format off
@@ -33,9 +33,23 @@ int main()
                                 57.10578757, -111.6817218 };
     // clang-format on
 
-    fs::path base_folder = "/home/ebiederstadt/Documents/sentinel_cache/bbox-111.9314176_56.921209032_-111.6817217_57.105787570/2019-05-22";
-    f32 diagonal_distance = remote_sensing::get_diagonal_distance(bbox[1], bbox[0], bbox[3], bbox[2]);
-    remote_sensing::detect_single_folder(base_folder, diagonal_distance, {}, false);
+    fs::path base_folder = "/home/ebiederstadt/Documents/sentinel_cache/bbox-111.9314176_56.921209032_-111.6817217_57.105787570";
+    remote_sensing::DataBase db(base_folder);
+    remote_sensing::Temporal temporal(db);
+    auto results = temporal.nir_for_location(base_folder, "2019-05-22", { 56.985953,-111.771001 });
+    fmt::print("values: [");
+    for (auto const& value : results.values) {
+        fmt::print("{}, ", value);
+    }
+    fmt::print("]\n");
+
+    fmt::print("dates: [");
+    for (auto const& days : results.dates) {
+        fmt::print("{}, ", days);
+    }
+    fmt::print("]\n");
+    //    f32 diagonal_distance = remote_sensing::get_diagonal_distance(bbox[1], bbox[0], bbox[3], bbox[2]);
+    //    remote_sensing::detect_single_folder(base_folder, diagonal_distance, {}, false);
 
     //    ImageFloat clp_data = normalize(utils::GeoTIFF<u8>(base_folder / "CLP.tif").values);
     //    ImageFloat cld_data = normalize<u8>(utils::GeoTIFF<u8>(base_folder / "CLD.tif").values, 100u);
