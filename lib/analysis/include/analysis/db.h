@@ -41,15 +41,14 @@ private:
     std::string sql;
 
     void create_sis_table();
-    void prepare_stmt(
+    SQLite::Statement prepare_stmt(
         std::string sql_string,
         utils::Indices index,
         f64 threshold,
         int start_year,
         int end_year,
-        DataChoices choice,
-        utils::StmtWrapper& stmt_to_prepare);
+        DataChoices choice);
 
-    int index_table_helper(std::string const& date_string, utils::Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, utils::StmtWrapper& stmt);
+    SQLite::Statement index_table_helper(std::string const& date_string, utils::Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data);
 };
 }

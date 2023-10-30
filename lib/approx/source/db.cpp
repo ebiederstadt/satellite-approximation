@@ -52,23 +52,16 @@ VALUES(?, ?, ?, ?, ?, ?)
 RETURNING id;
 )sql";
     if (stmt_insert == nullptr) {
-        stmt_insert = std::make_unique<utils::StmtWrapper>(db, sql_string);
+        stmt_insert = std::make_unique<SQLite::Statement>(db, sql_string);
     }
-    sqlite3_bind_text(stmt_insert->stmt, 1, band_name.c_str(), (int)band_name.length(), SQLITE_STATIC);
-    sqlite3_bind_text(stmt_insert->stmt, 2, method_string.data(), (int)method_string.length(), SQLITE_STATIC);
-    sqlite3_bind_int(stmt_insert->stmt, 3, (int)using_denoised);
-    date.bind_sql(stmt_insert->stmt, 4);
+    stmt_insert->bind(1, band_name);
+    stmt_insert->bind(2, method_string.data());
+    stmt_insert->bind(3, (int)using_denoised);
+    date.bind_sql(*stmt_insert, 4);
 
-    int rc = sqlite3_step(stmt_insert->stmt);
-    int id;
-    if (rc == SQLITE_ROW) {
-        id = sqlite3_column_int(stmt_insert->stmt, 0);
-    } else {
-        throw utils::DBError("Failed to insert data into approximated data table", rc, *logger);
+    while (stmt_insert->executeStep()) {
+        return stmt_insert->getColumn(0);
     }
-
-    sqlite3_reset(stmt_insert->stmt);
-    return id;
 }
 
 std::unordered_map<std::string, int> DataBase::get_approx_status(std::string const& date_string, ApproxMethod method, bool using_denoised)
@@ -83,23 +76,20 @@ FROM approximated_data
 WHERE method = ? AND using_denoised = ? AND year = ? AND month = ? AND day = ?;
 )sql";
     if (stmt_select == nullptr) {
-        stmt_select = std::make_unique<utils::StmtWrapper>(db, sql_string);
+        stmt_select = std::make_unique<SQLite::Statement>(db, sql_string);
     }
 
     auto method_string = magic_enum::enum_name(method);
-    sqlite3_bind_text(stmt_select->stmt, 1, method_string.data(), (int)method_string.length(), SQLITE_STATIC);
-    sqlite3_bind_int(stmt_select->stmt, 2, (int)using_denoised);
-    date.bind_sql(stmt_select->stmt, 3);
+    stmt_select->bind(1, method_string.data());
+    stmt_select->bind(2, (int)using_denoised);
+    date.bind_sql(*stmt_select, 3);
 
     std::unordered_map<std::string, int> output;
-    while (sqlite3_step(stmt_select->stmt) == SQLITE_ROW) {
-
-        int id = sqlite3_column_int(stmt_select->stmt, 0);
-        std::string name = reinterpret_cast<char const*>(sqlite3_column_text(stmt_select->stmt, 1));
+    while (stmt_select->executeStep()) {
+        int id = stmt_select->getColumn(0);
+        std::string name = stmt_select->getColumn(1);
         output.emplace(name, id);
     }
-
-    sqlite3_reset(stmt_select->stmt);
 
     return output;
 }
@@ -121,26 +111,26 @@ FROM dates WHERE
     ORDER BY year, month, day
 )sql";
     {
-        utils::StmtWrapper stmt(db, sql_string);
-        sqlite3_bind_int(stmt.stmt, 1, date.year());
-        sqlite3_bind_int(stmt.stmt, 2, next_month.year());
-        sqlite3_bind_int(stmt.stmt, 3, previous_month.year());
-        sqlite3_bind_int(stmt.stmt, 4, date.month());
-        sqlite3_bind_int(stmt.stmt, 5, next_month.month());
-        sqlite3_bind_int(stmt.stmt, 6, previous_month.month());
-        sqlite3_bind_int(stmt.stmt, 7, date.year());
-        sqlite3_bind_int(stmt.stmt, 8, date.month());
-        sqlite3_bind_int(stmt.stmt, 9, date.day());
+        SQLite::Statement stmt(db, sql_string);
+        stmt.bind(1, date.year());
+        stmt.bind(2, next_month.year());
+        stmt.bind(3, previous_month.year());
+        stmt.bind(4, date.month());
+        stmt.bind(5, next_month.month());
+        stmt.bind(6, previous_month.month());
+        stmt.bind(7, date.year());
+        stmt.bind(8, date.month());
+        stmt.bind(9, date.day());
 
-        while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
+        while (stmt.executeStep()) {
             DayInfo info;
-            int year = sqlite3_column_int(stmt.stmt, 0);
-            int month = sqlite3_column_int(stmt.stmt, 1);
-            int day = sqlite3_column_int(stmt.stmt, 2);
+            int year = stmt.getColumn(0);
+            int month = stmt.getColumn(1);
+            int day = stmt.getColumn(2);
             info.date = date_time::date(year, month, day);
 
-            info.percent_invalid = sqlite3_column_double(stmt.stmt, 3);
-            info.percent_invalid_noise_removed = sqlite3_column_double(stmt.stmt, 4);
+            info.percent_invalid = stmt.getColumn(3);
+            info.percent_invalid_noise_removed = stmt.getColumn(4);
 
             return_value.push_back(info);
         }
@@ -151,7 +141,7 @@ FROM dates WHERE
 
 DayInfo DataBase::select_info_about_date(std::string const& date_string)
 {
-    auto date = date_time::from_simple_string(date_string);
+    utils::Date date(date_string);
 
     DayInfo info;
     std::string sql_string = R"sql(
@@ -160,14 +150,12 @@ FROM dates WHERE year = ? AND month = ? AND day = ?
     ORDER BY year, month, day
 )sql";
     {
-        utils::StmtWrapper stmt(db, sql_string);
-        sqlite3_bind_int(stmt.stmt, 1, date.year());
-        sqlite3_bind_int(stmt.stmt, 2, date.month());
-        sqlite3_bind_int(stmt.stmt, 3, date.day());
+        SQLite::Statement stmt(db, sql_string);
+        date.bind_sql(stmt, 1);
 
-        while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
-            info.percent_invalid = sqlite3_column_double(stmt.stmt, 0);
-            info.percent_invalid_noise_removed = sqlite3_column_double(stmt.stmt, 1);
+        while (stmt.executeStep()) {
+            info.percent_invalid = stmt.getColumn(0);
+            info.percent_invalid_noise_removed = stmt.getColumn(1);
         }
     }
 

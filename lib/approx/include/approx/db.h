@@ -30,8 +30,8 @@ public:
     DayInfo select_info_about_date(std::string const& date_string);
 
 private:
-    std::unique_ptr<utils::StmtWrapper> stmt_select = nullptr;
-    std::unique_ptr<utils::StmtWrapper> stmt_insert = nullptr;
+    std::unique_ptr<SQLite::Statement> stmt_select = nullptr;
+    std::unique_ptr<SQLite::Statement> stmt_insert = nullptr;
 
     void create_approx_table();
 };

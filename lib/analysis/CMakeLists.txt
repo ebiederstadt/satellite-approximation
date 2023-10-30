@@ -11,5 +11,8 @@ target_link_libraries(analysis PRIVATE
         utils
         givdetypes::givdetypes
         magic_enum::magic_enum
-        SQLite::SQLite3
+        SQLiteCpp
+        sqlite3
+        pthread
+        dl
         opencv::opencv)

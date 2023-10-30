@@ -1,9 +1,9 @@
 #pragma once
 
+#include <SQLiteCpp/SQLiteCpp.h>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/functional/hash.hpp>
 #include <fmt/ostream.h>
-#include <sqlite3.h>
 
 namespace date_time = boost::gregorian;
 
@@ -19,7 +19,7 @@ struct Date {
     bool operator==(Date const& other) const;
     friend std::ostream& operator<<(std::ostream& os, Date const& d);
 
-    int bind_sql(sqlite3_stmt* stmt, int start_index) const;
+    int bind_sql(SQLite::Statement& stmt, int start_index) const;
 };
 }
 

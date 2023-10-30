@@ -21,47 +21,48 @@ std::vector<std::string> DataBase::get_approximated_data(std::string const& date
     std::string sql_select = R"sql(
 SELECT band_name FROM approximated_data WHERE year=? AND month=? AND day=? AND spatial=1
 )sql";
-    utils::StmtWrapper stmt_select(db, sql_select);
-    date.bind_sql(stmt_select.stmt, 1);
+    SQLite::Statement stmt_select(db, sql_select);
+    date.bind_sql(stmt_select, 1);
 
     std::vector<std::string> bands;
-    while (sqlite3_step(stmt_select.stmt) == SQLITE_ROW) {
-        bands.push_back(reinterpret_cast<char const*>(sqlite3_column_text(stmt_select.stmt, 0)));
+    while (stmt_select.executeStep()) {
+        bands.push_back(stmt_select.getColumn(0));
     }
 
     return bands;
 }
 
-void DataBase::prepare_stmt(
+SQLite::Statement DataBase::prepare_stmt(
     std::string sql_string,
     utils::Indices index,
     f64 threshold,
     int start_year,
     int end_year,
-    DataChoices choice,
-    utils::StmtWrapper &stmt_to_prepare)
+    DataChoices choice)
 {
 
     auto index_name = magic_enum::enum_name(index);
     threshold = std::round(threshold * 100.0) / 100.0;
 
-    stmt_to_prepare = utils::StmtWrapper(db, sql_string);
-    sqlite3_bind_text(stmt_to_prepare.stmt, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
-    sqlite3_bind_double(stmt_to_prepare.stmt, 2, threshold);
-    sqlite3_bind_int(stmt_to_prepare.stmt, 3, start_year);
-    sqlite3_bind_int(stmt_to_prepare.stmt, 4, end_year);
+    SQLite::Statement stmt_to_prepare(db, sql_string);
+    stmt_to_prepare.bind(1, index_name.data());
+    stmt_to_prepare.bind(2, threshold);
+    stmt_to_prepare.bind(3, start_year);
+    stmt_to_prepare.bind(4, end_year);
     std::visit(Visitor {
                    [&](UseApproximatedData) {
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 5, (int)true);
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 6, (int)false);
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 7, (int)false);
+                       stmt_to_prepare.bind(5, (int)true);
+                       stmt_to_prepare.bind(6, (int)false);
+                       stmt_to_prepare.bind(7, (int)false);
                    },
                    [&](UseRealData choice) {
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 5, (int)false);
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 6, (int)choice.exclude_cloudy_pixels);
-                       sqlite3_bind_int(stmt_to_prepare.stmt, 7, (int)choice.exclude_shadow_pixels);
+                       stmt_to_prepare.bind(5, (int)false);
+                       stmt_to_prepare.bind(6, (int)choice.exclude_cloudy_pixels);
+                       stmt_to_prepare.bind(7, (int)choice.exclude_shadow_pixels);
                    } },
         choice);
+
+    return stmt_to_prepare;
 }
 
 void DataBase::create_sis_table()
@@ -81,11 +82,8 @@ CREATE TABLE IF NOT EXISTS single_image_summary(
     mean REAL,
     num_days_used INTEGER);
 )sql";
-    int rc = sqlite3_exec(db, sql_create.c_str(), nullptr, nullptr, nullptr);
-    if (rc != SQLITE_OK) {
-        throw std::runtime_error(
-            "Failed to create single_image_summary table. Error: " + std::string(sqlite3_errmsg(db)));
-    }
+    SQLite::Statement statement(db, sql_create);
+    statement.exec();
 }
 
 std::optional<int> DataBase::result_exists(
@@ -101,21 +99,11 @@ std::optional<int> DataBase::result_exists(
 SELECT id FROM single_image_summary
 WHERE index_name=? AND threshold=? AND start_year=? AND end_year=? AND use_approximated_data=? AND exclude_cloudy_pixels=? AND exclude_shadow_pixels=?;
 )sql";
-    utils::StmtWrapper stmt_select;
-    prepare_stmt(sql_select, index, threshold, start_year, end_year, choice, stmt_select);
-    int rc = sqlite3_step(stmt_select.stmt);
-    std::optional<int> return_value = {};
-    if (rc == SQLITE_ROW) {
-        return_value = sqlite3_column_int(stmt_select.stmt, 0);
-    } else if (rc != SQLITE_ERROR) {
-        return {};
+    SQLite::Statement stmt_select = prepare_stmt(sql_select, index, threshold, start_year, end_year, choice);
+    while (stmt_select.executeStep()) {
+        return stmt_select.getColumn(0);
     }
-
-    if (rc == SQLITE_ERROR) {
-        throw std::runtime_error("Failed to select rows from single image summary table. Error: "
-            + std::string(sqlite3_errmsg(db)));
-    }
-    return return_value;
+    return {};
 }
 
 int DataBase::save_result_in_table(
@@ -136,25 +124,21 @@ INSERT INTO single_image_summary (index_name, threshold, start_year, end_year, u
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 )sql";
-    utils::StmtWrapper stmt_insert;
-    prepare_stmt(sql_insert, index, threshold, start_year, end_year, choice, stmt_insert);
-    sqlite3_bind_double(stmt_insert.stmt, 8, min);
-    sqlite3_bind_double(stmt_insert.stmt, 9, max);
-    sqlite3_bind_double(stmt_insert.stmt, 10, mean);
-    sqlite3_bind_int(stmt_insert.stmt, 11, num_days_used);
+    SQLite::Transaction transaction(db);
+    SQLite::Statement stmt_insert = prepare_stmt(sql_insert, index, threshold, start_year, end_year, choice);
+    stmt_insert.bind(8, min);
+    stmt_insert.bind(9, max);
+    stmt_insert.bind(10, mean);
+    stmt_insert.bind(11, num_days_used);
 
-    int rc = sqlite3_step(stmt_insert.stmt);
-    int result = -1;
-    if (rc == SQLITE_ROW) {
-        result = sqlite3_column_int(stmt_insert.stmt, 0);
-    } else if (rc != SQLITE_ERROR) {
-        logger->error("Failed to insert into db. rc={}", rc);
-    }
+    stmt_insert.executeStep();
+    int result = stmt_insert.getColumn(0);
+    transaction.commit();
 
     return result;
 }
 
-int DataBase::index_table_helper(std::string const& date_string, utils::Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data, utils::StmtWrapper &stmt)
+SQLite::Statement DataBase::index_table_helper(std::string const& date_string, utils::Indices index, f64 min, f64 max, f64 mean, int num_elements, bool use_approx_data)
 {
     std::string sql_string = R"sql(
 CREATE TABLE IF NOT EXISTS index_data(
@@ -172,28 +156,28 @@ CREATE TABLE IF NOT EXISTS index_data(
     day INTEGER NOT NULL,
     FOREIGN KEY(year, month, day) REFERENCES dates(year, month, day));
 )sql";
-    int rc = sqlite3_exec(db, sql_string.c_str(), nullptr, nullptr, nullptr);
-    if (rc != SQLITE_OK) {
-        throw std::runtime_error(
-            "Failed to create index_data table. Error: " + std::string(sqlite3_errmsg(db)));
+    {
+        SQLite::Transaction transaction(db);
+        db.exec(sql_string);
+        transaction.commit();
     }
 
     sql_string = R"sql(
 INSERT INTO index_data (index_name, using_approximated_data, min, max, mean, year, month, day, num_elements_used, exclude_cloudy_pixels, exclude_shadow_pixels)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 )sql";
-    stmt = utils::StmtWrapper(db, sql_string);
+    SQLite::Statement stmt(db, sql_string);
     auto index_name = magic_enum::enum_name(index);
     utils::Date date(date_string);
-    sqlite3_bind_text(stmt.stmt, 1, index_name.data(), (int)index_name.length(), SQLITE_STATIC);
-    sqlite3_bind_int(stmt.stmt, 2, (int)use_approx_data);
-    sqlite3_bind_double(stmt.stmt, 3, min);
-    sqlite3_bind_double(stmt.stmt, 4, max);
-    sqlite3_bind_double(stmt.stmt, 5, mean);
-    int idx = date.bind_sql(stmt.stmt, 6);
-    sqlite3_bind_int(stmt.stmt, idx, num_elements);
+    stmt.bind(1, index_name.data());
+    stmt.bind(2, (int)use_approx_data);
+    stmt.bind(3, min);
+    stmt.bind(4, max);
+    stmt.bind(5, mean);
+    int idx = date.bind_sql(stmt, 6);
+    stmt.bind(idx, num_elements);
 
-    return idx + 1;
+    return stmt;
 }
 
 void DataBase::store_index_info(std::string const& date_string, utils::Indices index, MatX<f64> const& index_matrix, MatX<bool> const& valid_pixels, UseRealData choice)
@@ -204,15 +188,12 @@ void DataBase::store_index_info(std::string const& date_string, utils::Indices i
         return;
     }
 
-    utils::StmtWrapper stmt_insert;
-    int idx = index_table_helper(date_string, index, selected_elements.minCoeff(), selected_elements.maxCoeff(), selected_elements.mean(), selected_elements.size(), false, stmt_insert);
-    sqlite3_bind_int(stmt_insert.stmt, idx, choice.exclude_cloudy_pixels);
-    sqlite3_bind_int(stmt_insert.stmt, idx + 1, choice.exclude_shadow_pixels);
+    int idx = 10;
+    SQLite::Statement stmt_insert = index_table_helper(date_string, index, selected_elements.minCoeff(), selected_elements.maxCoeff(), selected_elements.mean(), selected_elements.size(), false);
+    stmt_insert.bind(idx, choice.exclude_cloudy_pixels);
+    stmt_insert.bind(idx + 1, choice.exclude_shadow_pixels);
 
-    int rc = sqlite3_step(stmt_insert.stmt);
-    if (rc != SQLITE_DONE) {
-        throw std::runtime_error(fmt::format("Failed to insert data into index_data table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
-    }
+    stmt_insert.exec();
 }
 
 void DataBase::store_index_info(std::string const& date_string, utils::Indices index, MatX<f64> const& index_matrix, DataChoices choice)
@@ -226,16 +207,12 @@ void DataBase::store_index_info(std::string const& date_string, utils::Indices i
                        use_approx_data = false;
                    } },
         choice);
-    utils::StmtWrapper stmt_insert;
-    int idx = index_table_helper(date_string, index, index_matrix.minCoeff(), index_matrix.maxCoeff(), index_matrix.mean(), index_matrix.size(), use_approx_data, stmt_insert);
-    sqlite3_bind_int(stmt_insert.stmt, idx, (bool)false);
-    sqlite3_bind_int(stmt_insert.stmt, idx + 1, (bool)false);
+    int idx = 10;
+    SQLite::Statement stmt_insert = index_table_helper(date_string, index, index_matrix.minCoeff(), index_matrix.maxCoeff(), index_matrix.mean(), index_matrix.size(), use_approx_data, stmt_insert);
+    stmt_insert.bind(idx, (bool)false);
+    stmt_insert.bind(idx + 1, (bool)false);
 
-    int rc = sqlite3_step(stmt_insert.stmt);
-
-    if (rc != SQLITE_DONE) {
-        throw std::runtime_error(fmt::format("Failed to insert data into index_data table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
-    }
+    stmt_insert.exec();
 }
 
 void DataBase::save_noise_removal(std::string const& date_string, givde::f64 percent_invalid, int threshold)
@@ -249,14 +226,11 @@ ON CONFLICT(year, month, day) DO
 UPDATE SET
     percent_invalid_noise_removed = excluded.percent_invalid_noise_removed,
     threshold_used_for_noise_removal = excluded.threshold_used_for_noise_removal;)sql";
-    utils::StmtWrapper stmt_insert(db, sql_string);
-    int index = date.bind_sql(stmt_insert.stmt, 1);
-    sqlite3_bind_double(stmt_insert.stmt, index, percent_invalid);
-    sqlite3_bind_int(stmt_insert.stmt, index + 1, threshold);
-    int rc = sqlite3_step(stmt_insert.stmt);
-    if (rc != SQLITE_DONE) {
-        throw std::runtime_error(fmt::format("Failed to insert data into dates table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
-    }
+    SQLite::Statement stmt_insert(db, sql_string);
+    int index = date.bind_sql(stmt_insert, 1);
+    stmt_insert.bind(index, percent_invalid);
+    stmt_insert.bind(index + 1, threshold);
+    stmt_insert.exec();
 }
 
 bool DataBase::noise_exists(std::string const& date_string, int threshold)
@@ -264,17 +238,9 @@ bool DataBase::noise_exists(std::string const& date_string, int threshold)
     utils::Date date(date_string);
 
     std::string sql_string = "SELECT * FROM dates WHERE year = ? AND month = ? AND day = ? AND threshold_used_for_noise_removal = ?";
-    utils::StmtWrapper stmt_select(db, sql_string);
-    int index = date.bind_sql(stmt_select.stmt, 1);
-    sqlite3_bind_int(stmt_select.stmt, index, threshold);
-    int rc = sqlite3_step(stmt_select.stmt);
-
-    if (rc == SQLITE_DONE) {
-        return false;
-    } else if (rc == SQLITE_ROW) {
-        return true;
-    } else {
-        throw std::runtime_error(fmt::format("Failed to select data from dates table. Error: {}, Error code: {}", sqlite3_errmsg(db), rc));
-    }
+    SQLite::Statement stmt_select(db, sql_string);
+    int index = date.bind_sql(stmt_select, 1);
+    stmt_select.bind(index, threshold);
+    stmt_select.exec();
 }
 }

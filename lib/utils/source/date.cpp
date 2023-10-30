@@ -27,11 +27,11 @@ std::ostream& operator<<(std::ostream& os, Date const& d)
     return os << d.year << '-' << std::setw(2) << std::setfill('0') << d.month << '-' << std::setw(2) << std::setfill('0') << d.day;
 }
 
-int Date::bind_sql(sqlite3_stmt* stmt, int start_index) const
+int Date::bind_sql(SQLite::Statement& stmt, int start_index) const
 {
-    sqlite3_bind_int(stmt, start_index, year);
-    sqlite3_bind_int(stmt, start_index + 1, month);
-    sqlite3_bind_int(stmt, start_index + 2, day);
+    stmt.bind(start_index, year);
+    stmt.bind(start_index + 1, month);
+    stmt.bind(start_index + 2, day);
 
     // Where you need to start binding things that come after this
     return start_index + 3;

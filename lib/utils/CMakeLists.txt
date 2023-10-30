@@ -15,4 +15,8 @@ target_link_libraries(utils
         GDAL::GDAL
         spdlog::spdlog
         opencv::opencv
-        magic_enum::magic_enum)
+        magic_enum::magic_enum
+        SQLiteCpp
+        sqlite3
+        pthread
+        dl)

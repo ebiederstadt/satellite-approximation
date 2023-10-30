@@ -35,6 +35,9 @@ target_link_libraries(
         Boost::boost
         OpenCL::Headers
         OpenCL::OpenCL
-        SQLite::SQLite3
+        SQLiteCpp
+        sqlite3
+        pthread
+        dl
 )
 target_include_directories(cloud_shadow_detection PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")

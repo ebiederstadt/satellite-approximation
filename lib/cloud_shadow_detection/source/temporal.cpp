@@ -12,7 +12,7 @@ Temporal::Temporal(remote_sensing::DataBase& db)
 {
 }
 
-TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos)
+TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos, int max_results)
 {
     auto downloaded_dates = db.find_downloaded_dates();
     date_time::date date = date_time::from_simple_string(date_string);
@@ -25,9 +25,8 @@ TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string c
     // Try to find at least 15 non-cloudy dates
     TimeSeries time_series;
     int count = 0;
-    int total_desired = 15;
     for (auto &downloaded_date : downloaded_dates) {
-        if (count >= total_desired) {
+        if (count >= max_results) {
             break;
         }
 
@@ -41,9 +40,7 @@ TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string c
             time_series.dates.push_back(current_date);
             auto cloudy = static_cast<bool>(cache.at(current_date).clouds.valueAt(pos));
             time_series.clouds.push_back(cloudy);
-            if (!cloudy) {
-                count += 1;
-            }
+            count += 1;
             continue;
         }
 
@@ -59,9 +56,7 @@ TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string c
         time_series.dates.push_back(current_date);
         bool cloudy = static_cast<bool>(data.clouds.valueAt(pos));
         time_series.clouds.push_back(cloudy);
-        if (!cloudy) {
-            count += 1;
-        }
+        count += 1;
     }
 
     return time_series;

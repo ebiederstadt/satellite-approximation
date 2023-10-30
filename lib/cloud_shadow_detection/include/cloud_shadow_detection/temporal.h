@@ -25,7 +25,7 @@ class Temporal {
 public:
     explicit Temporal(DataBase& db);
 
-    TimeSeries nir_for_location(fs::path const &base_folder, std::string const& date_string, LatLng pos);
+    TimeSeries nir_for_location(fs::path const &base_folder, std::string const& date_string, LatLng pos, int max_results=15);
 
 private:
     DataBase& db;

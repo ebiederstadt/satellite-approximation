@@ -30,8 +30,6 @@ UPDATE SET
     percent_shadows = excluded.percent_shadows,
     percent_invalid = excluded.percent_invalid;
 )sql";
-    utils::StmtWrapper stmt(db, sql);
-
     for (auto const& [date, status] : results) {
         insert_into_table(date, status);
     }
@@ -55,35 +53,32 @@ UPDATE SET
     percent_shadows = excluded.percent_shadows,
     percent_invalid = excluded.percent_invalid;
 )sql";
-    utils::StmtWrapper stmt(db, sql);
+    SQLite::Statement stmt(db, sql);
 
-    int index = date.bind_sql(stmt.stmt, 1);
-    sqlite3_bind_int(stmt.stmt, index, (int)status.clouds_computed);
-    sqlite3_bind_int(stmt.stmt, index + 1, (int)status.shadows_computed);
-    sqlite3_bind_double(stmt.stmt, index + 2, status.percent_clouds);
+    int index = date.bind_sql(stmt, 1);
+    stmt.bind(index, (int)status.clouds_computed);
+    stmt.bind(index + 1, (int)status.shadows_computed);
+    stmt.bind(index + 2, status.percent_clouds);
     if (status.percent_shadows.has_value())
-        sqlite3_bind_double(stmt.stmt, index + 3, *status.percent_shadows);
+        stmt.bind(index + 3, *status.percent_shadows);
     else
-        sqlite3_bind_null(stmt.stmt, index + 3);
-    sqlite3_bind_double(stmt.stmt, index + 4, status.percent_invalid);
-    int rc = sqlite3_step(stmt.stmt);
-    if (rc != SQLITE_DONE) {
-        throw utils::DBError("Failed to insert into dates table", rc, *logger);
-    }
-    sqlite3_reset(stmt.stmt);
+        stmt.bind(index + 3);
+    stmt.bind(index + 4, status.percent_invalid);
+    int num = stmt.exec();
+    logger->debug("Inserted {} values into db", num);
 }
 
 std::vector<CloudStatus> DataBase::find_downloaded_dates()
 {
     std::vector<CloudStatus> results;
     std::string sql = "SELECT year, month, day, clouds_computed FROM dates";
-    utils::StmtWrapper stmt(db, sql);
-    while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
-        int year = sqlite3_column_int(stmt.stmt, 0);
-        int month = sqlite3_column_int(stmt.stmt, 1);
-        int day = sqlite3_column_int(stmt.stmt, 2);
+    SQLite::Statement stmt(db, sql);
+    while (stmt.executeStep()) {
+        int year = stmt.getColumn(0);
+        int month = stmt.getColumn(1);
+        int day = stmt.getColumn(2);
         date_time::date date(year, month, day);
-        results.push_back({ date, static_cast<bool>(sqlite3_column_int(stmt.stmt, 3)) });
+        results.push_back({ date, static_cast<bool>(stmt.getColumn(3).getInt()) });
     }
 
     return results;

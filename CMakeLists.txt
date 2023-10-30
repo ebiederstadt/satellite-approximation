@@ -35,6 +35,8 @@ add_subdirectory(lib/approx)
 add_subdirectory(lib/utils)
 add_subdirectory(executables)
 
+add_subdirectory(thirdparty/SQLiteCpp-3.3.1)
+
 set(source_files src/main.cpp)
 python_add_library(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers
