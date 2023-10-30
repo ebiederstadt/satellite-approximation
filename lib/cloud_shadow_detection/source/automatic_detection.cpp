@@ -248,6 +248,11 @@ void detect_clouds(fs::path folder, DataBase const& db)
     status.percent_clouds = utils::percent_non_zero(generated_cloud_mask.cloudMask);
     status.percent_invalid = status.percent_clouds;
 
+    // Write results
+    utils::GeoTIFF<u8> template_geotiff(folder / "B08.tif");
+    template_geotiff.values = generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse();
+    template_geotiff.write(folder / "cloud_mask.tif");
+
     db.write_detection_result(utils::Date(folder.filename().string()), status);
 }
 
