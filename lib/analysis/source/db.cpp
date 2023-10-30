@@ -208,39 +208,10 @@ void DataBase::store_index_info(std::string const& date_string, utils::Indices i
                    } },
         choice);
     int idx = 10;
-    SQLite::Statement stmt_insert = index_table_helper(date_string, index, index_matrix.minCoeff(), index_matrix.maxCoeff(), index_matrix.mean(), index_matrix.size(), use_approx_data, stmt_insert);
+    SQLite::Statement stmt_insert = index_table_helper(date_string, index, index_matrix.minCoeff(), index_matrix.maxCoeff(), index_matrix.mean(), index_matrix.size(), use_approx_data);
     stmt_insert.bind(idx, (bool)false);
     stmt_insert.bind(idx + 1, (bool)false);
 
     stmt_insert.exec();
-}
-
-void DataBase::save_noise_removal(std::string const& date_string, givde::f64 percent_invalid, int threshold)
-{
-    utils::Date date(date_string);
-
-    std::string sql_string = R"sql(
-INSERT INTO dates (year, month, day, percent_invalid_noise_removed, threshold_used_for_noise_removal)
-VALUES(?, ?, ?, ?, ?)
-ON CONFLICT(year, month, day) DO
-UPDATE SET
-    percent_invalid_noise_removed = excluded.percent_invalid_noise_removed,
-    threshold_used_for_noise_removal = excluded.threshold_used_for_noise_removal;)sql";
-    SQLite::Statement stmt_insert(db, sql_string);
-    int index = date.bind_sql(stmt_insert, 1);
-    stmt_insert.bind(index, percent_invalid);
-    stmt_insert.bind(index + 1, threshold);
-    stmt_insert.exec();
-}
-
-bool DataBase::noise_exists(std::string const& date_string, int threshold)
-{
-    utils::Date date(date_string);
-
-    std::string sql_string = "SELECT * FROM dates WHERE year = ? AND month = ? AND day = ? AND threshold_used_for_noise_removal = ?";
-    SQLite::Statement stmt_select(db, sql_string);
-    int index = date.bind_sql(stmt_select, 1);
-    stmt_select.bind(index, threshold);
-    stmt_select.exec();
 }
 }

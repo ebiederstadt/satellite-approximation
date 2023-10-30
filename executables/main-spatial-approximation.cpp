@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     }
 
     approx::DataBase db(base_folder.parent_path());
-    std::string folder_with_good_images = approx::find_good_close_image("2019-05-22", false, 0.2, db);
+    std::string folder_with_good_images = approx::find_good_close_image("2019-05-22", 0.2, db);
 
     fs::path replacement_path = base_folder.parent_path() / fs::path(folder_with_good_images);
 

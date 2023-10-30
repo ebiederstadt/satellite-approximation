@@ -263,7 +263,7 @@ void highlight_area_replaced(MultiChannelImage& input_images, MultiChannelImage 
     }
 }
 
-std::string find_good_close_image(std::string const& date_string, bool use_denoised_data, f64 distance_weight, DataBase& db)
+std::string find_good_close_image(std::string const& date_string, f64 distance_weight, DataBase& db)
 {
     if (distance_weight < 0 || distance_weight > 1) {
         throw utils::GenericError("Could not find close image: distance weight not between 0 and 1", *logger);
@@ -280,23 +280,21 @@ std::string find_good_close_image(std::string const& date_string, bool use_denoi
     }
 
     std::sort(info.begin(), info.end(), [&](DayInfo const& first, DayInfo const& second) {
-        return first.distance(date, distance_weight, use_denoised_data) < second.distance(date, distance_weight, use_denoised_data);
+        return first.distance(date, distance_weight) < second.distance(date, distance_weight);
     });
 
     DayInfo info_for_current_date = db.select_info_about_date(date_string);
-    f64 current_invalid = (use_denoised_data ? info_for_current_date.percent_invalid_noise_removed : info_for_current_date.percent_invalid);
-    f64 found_invalid = (use_denoised_data ? info[0].percent_invalid_noise_removed : info[0].percent_invalid);
-    if (current_invalid < found_invalid) {
+    if (info_for_current_date.percent_invalid < info[0].percent_invalid) {
         logger->debug("The current date has fewer invalid pixels than the date we found. Use laplace approximation");
         return date_string;
     }
 
     auto string = date_time::to_iso_extended_string(info[0].date);
-    logger->debug("Found image: {} {:.2f}% invalid", string, 100 * info[0].percent_invalid_noise_removed);
+    logger->debug("Found image: {} {:.2f}% invalid", string, 100 * info[0].percent_invalid);
     return string;
 }
 
-void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, bool use_denoised_data, f64 distance_weight, f64 skip_threshold)
+void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 distance_weight, f64 skip_threshold)
 {
     logger->debug("Processing directory: {}", base_folder);
     if (!is_directory(base_folder)) {
@@ -326,31 +324,26 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
             return;
         }
-        f64 invalid_percent = (use_denoised_data ? status.percent_invalid_denoised : status.percent_invalid);
-        if (invalid_percent > skip_threshold) {
+        if (status.percent_invalid > skip_threshold) {
             logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
             return;
         }
 
         MatX<bool> mask;
-        if (use_denoised_data) {
-            mask = utils::GeoTIFF<u8>(folder / "cloud_shadows_noise_removed.tif").values.cast<bool>();
-        } else {
-            MatX<bool> clouds;
-            MatX<bool> shadows;
-            utils::GeoTIFF<u8> cloud_tiff;
-            if (status.clouds_exist) {
-                clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
-            }
-            if (status.shadows_exist) {
-                shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
-            } else {
-                shadows.setZero(clouds.rows(), clouds.cols());
-            }
-            mask = clouds.array() || shadows.array();
+        MatX<bool> clouds;
+        MatX<bool> shadows;
+        utils::GeoTIFF<u8> cloud_tiff;
+        if (status.clouds_exist) {
+            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
         }
+        if (status.shadows_exist) {
+            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
+        } else {
+            shadows.setZero(clouds.rows(), clouds.cols());
+        }
+        mask = clouds.array() || shadows.array();
 
-        std::unordered_map<std::string, int> existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Poisson, use_denoised_data);
+        std::unordered_map<std::string, int> existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Poisson);
 
         if (use_cache) {
             std::vector<bool> data_exists;
@@ -380,7 +373,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
 
         // TODO: Take care of the case where we can't find any better images.
         // In that case, we should use laplace approximation
-        std::string folder_with_good_image = find_good_close_image(folder.filename().string(), use_denoised_data, distance_weight, db);
+        std::string folder_with_good_image = find_good_close_image(folder.filename().string(), distance_weight, db);
         fs::path replacement_path = base_folder / folder_with_good_image;
         for (auto const& band : band_names) {
             if (use_cache && existing_data.contains(band)) {
@@ -395,7 +388,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         approx::blend_images_poisson(input_images, replacement_images, mask);
         utils::GeoTIFF<f64> template_tiff(folder / "viewZenithMean.tif");
         for (size_t i = 0; i < input_images.images.size(); ++i) {
-            int id = db.write_approx_results(folder.filename().string(), output_band_names[i], ApproxMethod::Poisson, use_denoised_data);
+            int id = db.write_approx_results(folder.filename().string(), output_band_names[i], ApproxMethod::Poisson);
             template_tiff.values = input_images.images[i];
             template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
         }

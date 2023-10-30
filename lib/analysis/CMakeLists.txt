@@ -2,7 +2,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_library(analysis STATIC
         source/db.cpp
-        source/noise.cpp
         source/sis.cpp
         source/utils.cpp)
 target_include_directories(analysis PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")

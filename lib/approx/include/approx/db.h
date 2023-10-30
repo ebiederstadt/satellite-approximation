@@ -10,9 +10,8 @@ namespace approx {
 struct DayInfo {
     date_time::date date;
     f64 percent_invalid;
-    f64 percent_invalid_noise_removed;
 
-    [[nodiscard]] f64 distance(date_time::date const& other, f64 weight, bool use_denoised_data) const;
+    [[nodiscard]] f64 distance(date_time::date const& other, f64 weight) const;
 };
 
 enum class ApproxMethod {
@@ -24,8 +23,8 @@ class DataBase : public utils::DataBase {
 public:
     explicit DataBase(fs::path base_path);
 
-    int write_approx_results(std::string const& date_string, std::string const &band_name, ApproxMethod method, bool using_denoised);
-    std::unordered_map<std::string, int> get_approx_status(std::string const& date_string, ApproxMethod method, bool using_denoised);
+    int write_approx_results(std::string const& date_string, std::string const &band_name, ApproxMethod method);
+    std::unordered_map<std::string, int> get_approx_status(std::string const& date_string, ApproxMethod method);
     std::vector<DayInfo> select_close_images(std::string const& date_string);
     DayInfo select_info_about_date(std::string const& date_string);
 

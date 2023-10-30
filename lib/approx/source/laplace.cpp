@@ -130,7 +130,7 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
     logger->debug("It took {} seconds to solve the problem", sw);
 }
 
-void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold, bool use_denoised_data)
+void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
 {
     logger->debug("Processing directory: {}", base_folder);
     if (!is_directory(base_folder)) {
@@ -186,7 +186,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         std::unordered_map<std::string, int> existing_data;
         {
             std::lock_guard<std::mutex> lock(mutex);
-            existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Laplace, false);
+            existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Laplace);
         }
         for (auto const& band : band_names) {
             if (use_cache && existing_data.contains(band)) {
@@ -198,7 +198,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
             fill_missing_portion_smooth_boundary(values.values, mask);
 
             std::lock_guard<std::mutex> lock(mutex);
-            int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace, false);
+            int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace);
             values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
         }
 

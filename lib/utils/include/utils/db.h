@@ -14,7 +14,6 @@ struct CloudShadowStatus {
     bool clouds_exist = false;
     bool shadows_exist = false;
     f64 percent_invalid = 0.0;
-    f64 percent_invalid_denoised;
 };
 
 class DataBase {
