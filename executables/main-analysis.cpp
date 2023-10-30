@@ -5,7 +5,6 @@
 #include <gdal/gdal_priv.h>
 #include <spdlog/spdlog.h>
 #include <sqlite3.h>
-#include <utils/fmt_filesystem.h>
 #include <utils/log.h>
 
 namespace fs = std::filesystem;

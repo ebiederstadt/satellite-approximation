@@ -2,7 +2,6 @@
 #include "analysis/db.h"
 #include "analysis/utils.h"
 #include "utils/filesystem.h"
-#include "utils/fmt_filesystem.h"
 #include "utils/geotiff.h"
 #include "utils/log.h"
 

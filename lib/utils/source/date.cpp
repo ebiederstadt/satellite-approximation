@@ -24,7 +24,7 @@ bool Date::operator==(Date const& other) const
 
 std::ostream& operator<<(std::ostream& os, Date const& d)
 {
-    return os << d.year << '-' << d.month << '-' << d.day;
+    return os << d.year << '-' << std::setw(2) << std::setfill('0') << d.month << '-' << std::setw(2) << std::setfill('0') << d.day;
 }
 
 int Date::bind_sql(sqlite3_stmt* stmt, int start_index) const

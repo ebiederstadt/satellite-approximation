@@ -6,7 +6,6 @@
 #include <spdlog/stopwatch.h>
 #include <utils/error.h>
 #include <utils/filesystem.h>
-#include <utils/fmt_filesystem.h>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 

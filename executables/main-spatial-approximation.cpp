@@ -2,7 +2,6 @@
 #include <approx/poisson.h>
 #include <gdal/gdal_priv.h>
 #include <spdlog/spdlog.h>
-#include <utils/fmt_filesystem.h>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 

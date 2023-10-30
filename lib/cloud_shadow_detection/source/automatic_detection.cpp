@@ -1,5 +1,4 @@
 #include "cloud_shadow_detection/automatic_detection.h"
-#include <utils/fmt_filesystem.h>
 #include <utils/geotiff.h>
 
 #include <boost/regex.hpp>
@@ -77,10 +76,10 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
 
     Status status;
 
-    ImageFloat clp_data = normalize(*ReadSingleChannelUint8(params.clp_path));
+    ImageFloat clp_data = normalize(*ReadSingleChannelUint8(params.clp_path), std::numeric_limits<u8>::max());
     ImageFloat cld_data = normalize(*ReadSingleChannelUint8(params.cld_path), 100u);
     ImageUint scl_data = *ReadSingleChannelUint8(params.scl_path);
-    ImageFloat nir_data = normalize(*ReadSingleChannelUint16(params.nir_path));
+    ImageFloat nir_data = normalize(*ReadSingleChannelUint16(params.nir_path), std::numeric_limits<u16>::max());
 
     logger->debug(" --- Cloud Detection...");
     auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
@@ -103,7 +102,7 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
     if (skipShadowDetection.decision) {
         f64 percent = utils::percent_non_zero(generated_cloud_mask.cloudMask);
         if (percent >= skipShadowDetection.threshold) {
-            logger->debug("Skipping {} because too much of the image is cloudy ({:.2f}% cloudy)", params.cloud_path().parent_path(), percent * 100);
+            logger->debug("Skipping {} because too much of the image is clouds ({:.2f}% clouds)", params.cloud_path().parent_path(), percent * 100);
             return status;
         }
     }
@@ -233,6 +232,23 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
     }
 
     return status;
+}
+
+void detect_clouds(fs::path folder, DataBase const &db)
+{
+    Status status;
+
+    ImageFloat clp_data = normalize(*ReadSingleChannelUint8(folder / "CLP.tif"), std::numeric_limits<u8>::max());
+    ImageFloat cld_data = normalize(*ReadSingleChannelUint8(folder / "CLD.tif"), 100u);
+    ImageUint scl_data = *ReadSingleChannelUint8(folder / "SCL.tif");
+
+    auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
+
+    status.clouds_computed = true;
+    status.percent_clouds = utils::percent_non_zero(generated_cloud_mask.cloudMask);
+    status.percent_invalid = status.percent_clouds;
+
+    db.write_detection_result(utils::Date(folder.filename().string()), status);
 }
 
 void detect_single_folder(fs::path directory, f32 diagonal_distance, SkipShadowDetection skipShadowDetection, bool use_cache)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils/error.h"
-#include "utils/fmt_filesystem.h"
 #include "utils/log.h"
 #include "utils/noCopying.h"
 
@@ -300,8 +299,8 @@ public:
 
     Vec2<i64> indexAt(LatLng const& pos) const
     {
-        i64 x = i64((pos.y() - west()) / eastWestStep());
-        i64 y = i64((pos.x() - north()) / northSouthStep());
+        i64 x = i64((pos.y().number() - west()) / eastWestStep());
+        i64 y = i64((pos.x().number() - north()) / northSouthStep());
         x = std::clamp(x, static_cast<i64>(0), static_cast<i64>(width - 1));
         y = std::clamp(y, static_cast<i64>(0), static_cast<i64>(height - 1));
 

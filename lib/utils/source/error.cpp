@@ -1,5 +1,6 @@
 #include "utils/error.h"
-#include "utils/fmt_filesystem.h"
+#include "utils/log.h"
+
 #include <sqlite3.h>
 
 namespace utils {

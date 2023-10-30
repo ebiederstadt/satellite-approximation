@@ -4,7 +4,6 @@
 #include <utils/eigen.h>
 #include <utils/error.h>
 #include <utils/filesystem.h>
-#include <utils/fmt_filesystem.h>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 
@@ -38,12 +37,12 @@ UPDATE SET
     }
 }
 
-void DataBase::write_detection_result(utils::Date const& date, Status const& status)
+void DataBase::write_detection_result(utils::Date const& date, Status const& status) const
 {
     insert_into_table(date, status);
 }
 
-void DataBase::insert_into_table(utils::Date const& date, remote_sensing::Status const& status)
+void DataBase::insert_into_table(utils::Date const& date, remote_sensing::Status const& status) const
 {
     std::string sql = R"sql(
 INSERT INTO dates (year, month, day, clouds_computed, shadows_computed, percent_cloudy, percent_shadows, percent_invalid)
@@ -69,9 +68,25 @@ UPDATE SET
     sqlite3_bind_double(stmt.stmt, index + 4, status.percent_invalid);
     int rc = sqlite3_step(stmt.stmt);
     if (rc != SQLITE_DONE) {
-        throw utils::DBError("First insert failed", rc, *logger);
+        throw utils::DBError("Failed to insert into dates table", rc, *logger);
     }
     sqlite3_reset(stmt.stmt);
+}
+
+std::vector<CloudStatus> DataBase::find_downloaded_dates()
+{
+    std::vector<CloudStatus> results;
+    std::string sql = "SELECT year, month, day, clouds_computed FROM dates";
+    utils::StmtWrapper stmt(db, sql);
+    while (sqlite3_step(stmt.stmt) == SQLITE_ROW) {
+        int year = sqlite3_column_int(stmt.stmt, 0);
+        int month = sqlite3_column_int(stmt.stmt, 1);
+        int day = sqlite3_column_int(stmt.stmt, 2);
+        date_time::date date(year, month, day);
+        results.push_back({ date, static_cast<bool>(sqlite3_column_int(stmt.stmt, 3)) });
+    }
+
+    return results;
 }
 
 std::unordered_map<utils::Date, Status> get_detection_results(fs::path base_folder)
