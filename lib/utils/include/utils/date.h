@@ -15,8 +15,10 @@ struct Date {
 
     explicit Date(date_time::date const& date);
     explicit Date(std::string const& date_string);
+    Date() = default;
 
     bool operator==(Date const& other) const;
+    bool operator<(Date const &other) const;
     friend std::ostream& operator<<(std::ostream& os, Date const& d);
 
     int bind_sql(SQLite::Statement& stmt, int start_index) const;

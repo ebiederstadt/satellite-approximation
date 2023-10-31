@@ -22,6 +22,14 @@ bool Date::operator==(Date const& other) const
     return year == other.year && month == other.month && day == other.day;
 }
 
+bool Date::operator<(Date const& other) const
+{
+    date_time::date current(year, month, day);
+    date_time::date compare(other.year, other.month, other.day);
+
+    return current < compare;
+}
+
 std::ostream& operator<<(std::ostream& os, Date const& d)
 {
     return os << d.year << '-' << std::setw(2) << std::setfill('0') << d.month << '-' << std::setw(2) << std::setfill('0') << d.day;

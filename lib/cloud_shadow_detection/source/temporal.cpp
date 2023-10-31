@@ -12,7 +12,17 @@ Temporal::Temporal(remote_sensing::DataBase& db)
 {
 }
 
-TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos, int max_results)
+std::vector<TemporalValue> Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos, int max_results)
+{
+    return index_for_location(base_folder, date_string, "B08.tif", pos, max_results);
+}
+
+std::vector<TemporalValue> Temporal::swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
+{
+    return index_for_location(base_folder, date_string, "B11.tif", pos, max_results);
+}
+
+std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_folder, std::string const& date_string, std::string tiff_name, LatLng pos, int max_results)
 {
     auto downloaded_dates = db.find_downloaded_dates();
     date_time::date date = date_time::from_simple_string(date_string);
@@ -22,43 +32,49 @@ TimeSeries Temporal::nir_for_location(fs::path const& base_folder, std::string c
         return first.distance(date) < second.distance(date);
     });
 
-    // Try to find at least 15 non-cloudy dates
-    TimeSeries time_series;
+    std::vector<TemporalValue> time_series;
     int count = 0;
-    for (auto &downloaded_date : downloaded_dates) {
+    for (auto& downloaded_date : downloaded_dates) {
         if (count >= max_results) {
             break;
         }
 
+        std::string current_date_string = date_time::to_iso_extended_string(downloaded_date.date);
         if (!downloaded_date.clouds_computed) {
-            detect_clouds(base_folder / date_time::to_iso_extended_string(downloaded_date.date), db);
+            detect_clouds(base_folder / current_date_string, db);
         }
 
         utils::Date current_date(downloaded_date.date);
         if (cache.contains(current_date)) {
-            time_series.values.push_back(cache.at(current_date).nir_normalized.valueAt(pos));
-            time_series.dates.push_back(current_date);
-            auto cloudy = static_cast<bool>(cache.at(current_date).clouds.valueAt(pos));
-            time_series.clouds.push_back(cloudy);
+            TemporalValue value;
+            value.value = cache.at(current_date).index_normalized.valueAt(pos);
+            value.date = current_date;
+            value.clouds = cache.at(current_date).clouds.valueAt(pos);
+            time_series.push_back(value);
             count += 1;
             continue;
         }
 
-        // Try to find at least 15 non-cloudy-samples
         CacheData data;
-        data.clouds = utils::GeoTIFF<u8>(base_folder / date_string / "cloud_mask.tif");
-        data.nir_normalized = utils::GeoTIFF<f32>(base_folder / date_string / "B08.tif");
-        data.nir_normalized.values = ImageOperations::normalize(data.nir_normalized.values, std::numeric_limits<u16>::max());
+        data.clouds = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
+        data.index_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / tiff_name);
+        // 10,000 converts to bottom of atmosphere reflectance
+        data.index_normalized.values = ImageOperations::normalize(data.index_normalized.values, 10000);
 
         cache.emplace(current_date, data);
 
-        time_series.values.push_back(data.nir_normalized.valueAt(pos));
-        time_series.dates.push_back(current_date);
+        TemporalValue value;
+        value.value = data.index_normalized.valueAt(pos);
+        value.date = current_date;
         bool cloudy = static_cast<bool>(data.clouds.valueAt(pos));
-        time_series.clouds.push_back(cloudy);
+        value.clouds = cloudy;
+        time_series.push_back(value);
         count += 1;
     }
 
+    std::sort(time_series.begin(), time_series.end(), [](TemporalValue const& first, TemporalValue const& second) {
+        return first.date < second.date;
+    });
     return time_series;
 }
 }

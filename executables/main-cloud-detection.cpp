@@ -36,16 +36,16 @@ int main()
     fs::path base_folder = "/home/ebiederstadt/Documents/sentinel_cache/bbox-111.9314176_56.921209032_-111.6817217_57.105787570";
     remote_sensing::DataBase db(base_folder);
     remote_sensing::Temporal temporal(db);
-    auto results = temporal.nir_for_location(base_folder, "2019-05-22", { 56.985953,-111.771001 });
+    auto results = temporal.swir_for_location(base_folder, "2019-05-22", { 56.985953,-111.771001 }, 30);
     fmt::print("values: [");
-    for (auto const& value : results.values) {
-        fmt::print("{}, ", value);
+    for (auto const& result : results) {
+        fmt::print("{}, ", result.value);
     }
     fmt::print("]\n");
 
     fmt::print("dates: [");
-    for (auto const& days : results.dates) {
-        fmt::print("{}, ", days);
+    for (auto const& result : results) {
+        fmt::print("{}, ", result.date);
     }
     fmt::print("]\n");
     //    f32 diagonal_distance = remote_sensing::get_diagonal_distance(bbox[1], bbox[0], bbox[3], bbox[2]);

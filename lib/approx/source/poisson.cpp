@@ -270,9 +270,6 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
     }
 
     auto date = date_time::from_simple_string(date_string);
-    auto previous_month = date - date_time::months(1);
-    auto next_month = date + date_time::months(1);
-
     std::vector<DayInfo> info = db.select_close_images(date_string);
     if (info.empty()) {
         logger->warn("Could not find any good images close by. Date: {}", date_time::to_simple_string(date));
