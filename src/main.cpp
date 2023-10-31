@@ -105,15 +105,30 @@ PYBIND11_MODULE(_core, m)
     py::class_<remote_sensing::DataBase>(m, "DataBase")
         .def(py::init<fs::path>());
 
-    py::class_<remote_sensing::TimeSeries>(m, "TimeSeries")
+    py::class_<remote_sensing::TemporalValue>(m, "TemporalValue", py::dynamic_attr())
         .def(py::init<>())
-        .def_readonly("values", &remote_sensing::TimeSeries::values)
-        .def_readonly("clouds", &remote_sensing::TimeSeries::clouds)
-        .def_readonly("dates", &remote_sensing::TimeSeries::dates);
+        .def_readonly("value", &remote_sensing::TemporalValue::value)
+        .def_readonly("clouds", &remote_sensing::TemporalValue::clouds)
+        .def_readonly("date", &remote_sensing::TemporalValue::date)
+        .def("__repr__", [](remote_sensing::TemporalValue const& temporal_value) {
+            return fmt::format("date: {}, value: {}, cloudy: {}", temporal_value.date, temporal_value.value, temporal_value.clouds ? "yes" : "no");
+        });
 
     py::class_<remote_sensing::Temporal>(m, "Temporal")
         .def(py::init<remote_sensing::DataBase&>())
-        .def("nir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
-            return self.nir_for_location(base_folder, date_string, { lat, lng }, max_results);
-        }, "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a=15);
+        .def(
+            "nir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
+                return self.nir_for_location(base_folder, date_string, { lat, lng }, max_results);
+            },
+            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15)
+        .def(
+            "swir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
+                return self.swir_for_location(base_folder, date_string, { lat, lng }, max_results);
+            },
+            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15)
+        .def(
+            "water_test_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
+                return self.water_test_for_location(base_folder, date_string, { lat, lng }, max_results);
+            },
+            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15);
 }

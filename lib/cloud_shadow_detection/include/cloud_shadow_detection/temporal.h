@@ -19,6 +19,7 @@ struct CacheData {
     utils::GeoTIFF<u8> clouds;
     utils::GeoTIFF<f32> nir_normalized;
     utils::GeoTIFF<f32> swir_normalized;
+    utils::GeoTIFF<u8> water_test;
 };
 
 // Time Series analysis
@@ -28,6 +29,7 @@ public:
 
     std::vector<TemporalValue> nir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
     std::vector<TemporalValue> swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
+    std::vector<TemporalValue> water_test_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
 
 private:
     DataBase& db;
@@ -35,7 +37,8 @@ private:
 
     enum class Index {
         NIR,
-        SWIR
+        SWIR,
+        WaterTest
     };
 
     std::vector<TemporalValue> index_for_location(fs::path const& base_folder, std::string const& date_string, Index index, LatLng pos, int max_results);

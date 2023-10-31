@@ -2,6 +2,8 @@
 #include "cloud_shadow_detection/ImageOperations.h"
 #include "cloud_shadow_detection/automatic_detection.h"
 
+#include <utils/indices.h>
+
 #include <utils/log.h>
 
 namespace remote_sensing {
@@ -20,6 +22,11 @@ std::vector<TemporalValue> Temporal::nir_for_location(fs::path const& base_folde
 std::vector<TemporalValue> Temporal::swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
 {
     return index_for_location(base_folder, date_string, Index::SWIR, pos, max_results);
+}
+
+std::vector<TemporalValue> Temporal::water_test_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
+{
+    return index_for_location(base_folder, date_string, Index::WaterTest, pos, max_results);
 }
 
 std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_folder, std::string const& date_string, Index index, LatLng pos, int max_results)
@@ -51,6 +58,8 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
                 value.value = cache.at(current_date).nir_normalized.valueAt(pos);
             } else if (index == Index::SWIR) {
                 value.value = cache.at(current_date).swir_normalized.valueAt(pos);
+            } else if (index == Index::WaterTest) {
+                value.value = static_cast<f32>(cache.at(current_date).water_test.valueAt(pos));
             } else {
                 throw utils::GenericError("Failed to map index name to known value", *logger);
             }
@@ -70,6 +79,12 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
         data.nir_normalized.values = ImageOperations::normalize(data.nir_normalized.values, norm_factor);
         data.swir_normalized.values = ImageOperations::normalize(data.swir_normalized.values, norm_factor);
 
+        utils::GeoTIFF<f64> ndvi = utils::compute_index(base_folder / current_date_string, base_folder / current_date_string / "viewZenithMean.tif", utils::Indices::NDVI);
+        MatX<bool> water_test = (ndvi.values.array() < 0.01 && data.nir_normalized.values.array() < 0.11f)
+                                || (ndvi.values.array() < 0.1 && data.nir_normalized.values.array() < 0.05f);
+        data.water_test = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
+        data.water_test.values = water_test.cast<u8>();
+
         cache.emplace(current_date, data);
 
         TemporalValue value;
@@ -77,6 +92,8 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
             value.value = data.nir_normalized.valueAt(pos);
         } else if (index == Index::SWIR) {
             value.value = data.swir_normalized.valueAt(pos);
+        } else if (index == Index::WaterTest) {
+            value.value = static_cast<f32>(data.water_test.valueAt(pos));
         } else {
             throw utils::GenericError("Failed to map index name to known value", *logger);
         }
