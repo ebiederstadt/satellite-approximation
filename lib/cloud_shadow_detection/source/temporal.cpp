@@ -14,15 +14,15 @@ Temporal::Temporal(remote_sensing::DataBase& db)
 
 std::vector<TemporalValue> Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos, int max_results)
 {
-    return index_for_location(base_folder, date_string, "B08.tif", pos, max_results);
+    return index_for_location(base_folder, date_string, Index::NIR, pos, max_results);
 }
 
 std::vector<TemporalValue> Temporal::swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
 {
-    return index_for_location(base_folder, date_string, "B11.tif", pos, max_results);
+    return index_for_location(base_folder, date_string, Index::SWIR, pos, max_results);
 }
 
-std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_folder, std::string const& date_string, std::string tiff_name, LatLng pos, int max_results)
+std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_folder, std::string const& date_string, Index index, LatLng pos, int max_results)
 {
     auto downloaded_dates = db.find_downloaded_dates();
     date_time::date date = date_time::from_simple_string(date_string);
@@ -47,7 +47,13 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
         utils::Date current_date(downloaded_date.date);
         if (cache.contains(current_date)) {
             TemporalValue value;
-            value.value = cache.at(current_date).index_normalized.valueAt(pos);
+            if (index == Index::NIR) {
+                value.value = cache.at(current_date).nir_normalized.valueAt(pos);
+            } else if (index == Index::SWIR) {
+                value.value = cache.at(current_date).swir_normalized.valueAt(pos);
+            } else {
+                throw utils::GenericError("Failed to map index name to known value", *logger);
+            }
             value.date = current_date;
             value.clouds = cache.at(current_date).clouds.valueAt(pos);
             time_series.push_back(value);
@@ -57,14 +63,23 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
 
         CacheData data;
         data.clouds = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
-        data.index_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / tiff_name);
+        data.nir_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / "B08.tif");
+        data.swir_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / "B11.tif");
         // 10,000 converts to bottom of atmosphere reflectance
-        data.index_normalized.values = ImageOperations::normalize(data.index_normalized.values, 10000);
+        constexpr f32 norm_factor = 10000.0f;
+        data.nir_normalized.values = ImageOperations::normalize(data.nir_normalized.values, norm_factor);
+        data.swir_normalized.values = ImageOperations::normalize(data.swir_normalized.values, norm_factor);
 
         cache.emplace(current_date, data);
 
         TemporalValue value;
-        value.value = data.index_normalized.valueAt(pos);
+        if (index == Index::NIR) {
+            value.value = data.nir_normalized.valueAt(pos);
+        } else if (index == Index::SWIR) {
+            value.value = data.swir_normalized.valueAt(pos);
+        } else {
+            throw utils::GenericError("Failed to map index name to known value", *logger);
+        }
         value.date = current_date;
         bool cloudy = static_cast<bool>(data.clouds.valueAt(pos));
         value.clouds = cloudy;
