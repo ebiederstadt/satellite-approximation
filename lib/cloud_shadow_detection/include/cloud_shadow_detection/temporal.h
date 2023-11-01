@@ -22,25 +22,21 @@ struct CacheData {
     utils::GeoTIFF<u8> water_test;
 };
 
+enum class Band {
+    NIR,
+    SWIR
+};
+
 // Time Series analysis
 class Temporal {
 public:
     explicit Temporal(DataBase& db);
 
-    std::vector<TemporalValue> nir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
-    std::vector<TemporalValue> swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
-    std::vector<TemporalValue> water_test_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results = 15);
+    std::vector<TemporalValue> band_for_location(fs::path const& base_folder, std::string const& date_string, Band band, LatLng pos, int max_results = 15);
 
 private:
     DataBase& db;
-    std::unordered_map<utils::Date, CacheData> cache;
-
-    enum class Index {
-        NIR,
-        SWIR,
-        WaterTest
-    };
-
-    std::vector<TemporalValue> index_for_location(fs::path const& base_folder, std::string const& date_string, Index index, LatLng pos, int max_results);
+    std::unordered_map<utils::Date, std::unordered_map<Band, utils::GeoTIFF<f32>>> cache;
+    std::unordered_map<utils::Date, utils::GeoTIFF<u8>> cloud_cache;
 };
 }

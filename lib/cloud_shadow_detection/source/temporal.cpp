@@ -14,22 +14,19 @@ Temporal::Temporal(remote_sensing::DataBase& db)
 {
 }
 
-std::vector<TemporalValue> Temporal::nir_for_location(fs::path const& base_folder, std::string const& date_string, givde::LatLng pos, int max_results)
+static std::string band_name(Band band)
 {
-    return index_for_location(base_folder, date_string, Index::NIR, pos, max_results);
+    switch (band){
+    case Band::NIR:
+        return "B08.tif";
+    case Band::SWIR:
+        return "B11.tif";
+    default:
+        throw utils::GenericError("Failed to map from band enum to tiff string", *logger);
+    }
 }
 
-std::vector<TemporalValue> Temporal::swir_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
-{
-    return index_for_location(base_folder, date_string, Index::SWIR, pos, max_results);
-}
-
-std::vector<TemporalValue> Temporal::water_test_for_location(fs::path const& base_folder, std::string const& date_string, LatLng pos, int max_results)
-{
-    return index_for_location(base_folder, date_string, Index::WaterTest, pos, max_results);
-}
-
-std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_folder, std::string const& date_string, Index index, LatLng pos, int max_results)
+std::vector<TemporalValue> Temporal::band_for_location(fs::path const& base_folder, std::string const& date_string, Band band, givde::LatLng pos, int max_results)
 {
     auto downloaded_dates = db.find_downloaded_dates();
     date_time::date date = date_time::from_simple_string(date_string);
@@ -52,54 +49,25 @@ std::vector<TemporalValue> Temporal::index_for_location(fs::path const& base_fol
         }
 
         utils::Date current_date(downloaded_date.date);
-        if (cache.contains(current_date)) {
-            TemporalValue value;
-            if (index == Index::NIR) {
-                value.value = cache.at(current_date).nir_normalized.valueAt(pos);
-            } else if (index == Index::SWIR) {
-                value.value = cache.at(current_date).swir_normalized.valueAt(pos);
-            } else if (index == Index::WaterTest) {
-                value.value = static_cast<f32>(cache.at(current_date).water_test.valueAt(pos));
-            } else {
-                throw utils::GenericError("Failed to map index name to known value", *logger);
-            }
-            value.date = current_date;
-            value.clouds = cache.at(current_date).clouds.valueAt(pos);
-            time_series.push_back(value);
-            count += 1;
-            continue;
+        if (!cache.contains(current_date)) {
+            cache[current_date] = {};
         }
 
-        CacheData data;
-        data.clouds = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
-        data.nir_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / "B08.tif");
-        data.swir_normalized = utils::GeoTIFF<f32>(base_folder / current_date_string / "B11.tif");
         // 10,000 converts to bottom of atmosphere reflectance
         constexpr f32 norm_factor = 10000.0f;
-        data.nir_normalized.values = ImageOperations::normalize(data.nir_normalized.values, norm_factor);
-        data.swir_normalized.values = ImageOperations::normalize(data.swir_normalized.values, norm_factor);
+        if (!cache[current_date].contains(band)) {
+            cache[current_date][band] = utils::GeoTIFF<f32>(base_folder / current_date_string / band_name(band));
+            cache[current_date][band].values = ImageOperations::normalize(cache[current_date][band].values, norm_factor);
+        }
 
-        utils::GeoTIFF<f64> ndvi = utils::compute_index(base_folder / current_date_string, base_folder / current_date_string / "viewZenithMean.tif", utils::Indices::NDVI);
-        MatX<bool> water_test = (ndvi.values.array() < 0.01 && data.nir_normalized.values.array() < 0.11f)
-                                || (ndvi.values.array() < 0.1 && data.nir_normalized.values.array() < 0.05f);
-        data.water_test = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
-        data.water_test.values = water_test.cast<u8>();
-
-        cache.emplace(current_date, data);
+        if (!cloud_cache.contains(current_date)) {
+            cloud_cache[current_date] = utils::GeoTIFF<u8>(base_folder / current_date_string / "cloud_mask.tif");
+        }
 
         TemporalValue value;
-        if (index == Index::NIR) {
-            value.value = data.nir_normalized.valueAt(pos);
-        } else if (index == Index::SWIR) {
-            value.value = data.swir_normalized.valueAt(pos);
-        } else if (index == Index::WaterTest) {
-            value.value = static_cast<f32>(data.water_test.valueAt(pos));
-        } else {
-            throw utils::GenericError("Failed to map index name to known value", *logger);
-        }
+        value.value = cache[current_date][band].valueAt(pos);
+        value.clouds = cloud_cache[current_date].valueAt(pos);
         value.date = current_date;
-        bool cloudy = static_cast<bool>(data.clouds.valueAt(pos));
-        value.clouds = cloudy;
         time_series.push_back(value);
         count += 1;
     }
