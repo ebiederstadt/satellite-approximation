@@ -114,21 +114,15 @@ PYBIND11_MODULE(_core, m)
             return fmt::format("date: {}, value: {}, cloudy: {}", temporal_value.date, temporal_value.value, temporal_value.clouds ? "yes" : "no");
         });
 
+    py::enum_<remote_sensing::Band>(m, "Band")
+        .value("NIR", remote_sensing::Band::NIR)
+        .value("SWIR", remote_sensing::Band::SWIR);
+
     py::class_<remote_sensing::Temporal>(m, "Temporal")
         .def(py::init<remote_sensing::DataBase&>())
         .def(
-            "nir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
-                return self.nir_for_location(base_folder, date_string, { lat, lng }, max_results);
+            "band_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, remote_sensing::Band band, f64 lat, f64 lng, int max_results) {
+                return self.band_for_location(base_folder, date_string, band, { lat, lng }, max_results);
             },
-            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15)
-        .def(
-            "swir_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
-                return self.swir_for_location(base_folder, date_string, { lat, lng }, max_results);
-            },
-            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15)
-        .def(
-            "water_test_for_location", [](remote_sensing::Temporal& self, fs::path const& base_folder, std::string const& date_string, f64 lat, f64 lng, int max_results) {
-                return self.water_test_for_location(base_folder, date_string, { lat, lng }, max_results);
-            },
-            "base_folder"_a, "date_string"_a, "lat"_a, "lng"_a, "max_results"_a = 15);
+            "base_folder"_a, "date_string"_a, "band"_a, "lat"_a, "lng"_a, "max_results"_a = 15);
 }

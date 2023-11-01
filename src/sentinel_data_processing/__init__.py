@@ -15,5 +15,6 @@ __all__ = [
     "Date",
     "DataBase",
     "TimeSeries",
+    "Band",
     "Temporal"
 ]
