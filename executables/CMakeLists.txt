@@ -15,7 +15,8 @@ set(libraries
         Boost::boost
         OpenCL::Headers
         OpenCL::OpenCL
-        range-v3::range-v3)
+        range-v3::range-v3
+        GDAL::GDAL)
 target_link_libraries(main_cloud_detection
         ${libraries}
         opencv::opencv)

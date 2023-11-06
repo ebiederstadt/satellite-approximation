@@ -4,7 +4,9 @@
 #include <spdlog/spdlog.h>
 #include <string_view>
 #include <filesystem>
+#include <givde/types.hpp>
 
+using namespace givde;
 namespace fs = std::filesystem;
 
 namespace utils {

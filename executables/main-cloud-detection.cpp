@@ -34,22 +34,12 @@ int main()
     // clang-format on
 
     fs::path base_folder = "/home/ebiederstadt/Documents/sentinel_cache/bbox-111.9314176_56.921209032_-111.6817217_57.105787570";
+//    f32 diagonal_distance = remote_sensing::get_diagonal_distance(bbox[1], bbox[0], bbox[3], bbox[2]);
+//    remote_sensing::detect_single_folder(base_folder, diagonal_distance, {}, false);
+
     remote_sensing::DataBase db(base_folder);
     remote_sensing::Temporal temporal(db);
-    auto results = temporal.swir_for_location(base_folder, "2019-05-22", { 56.985953,-111.771001 }, 30);
-    fmt::print("values: [");
-    for (auto const& result : results) {
-        fmt::print("{}, ", result.value);
-    }
-    fmt::print("]\n");
-
-    fmt::print("dates: [");
-    for (auto const& result : results) {
-        fmt::print("{}, ", result.date);
-    }
-    fmt::print("]\n");
-    //    f32 diagonal_distance = remote_sensing::get_diagonal_distance(bbox[1], bbox[0], bbox[3], bbox[2]);
-    //    remote_sensing::detect_single_folder(base_folder, diagonal_distance, {}, false);
+    auto results = temporal.band_for_location(base_folder, "2019-05-22", remote_sensing::Band::NIR, {56.996223,-111.851387}, 30);
 
     //    ImageFloat clp_data = normalize(utils::GeoTIFF<u8>(base_folder / "CLP.tif").values);
     //    ImageFloat cld_data = normalize<u8>(utils::GeoTIFF<u8>(base_folder / "CLD.tif").values, 100u);

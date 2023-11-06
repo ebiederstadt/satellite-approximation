@@ -9,9 +9,6 @@ using namespace givde;
 namespace fs = std::filesystem;
 
 namespace approx {
-std::vector<index_t> flood(MatX<bool> const& invalid, Eigen::Index row, Eigen::Index col);
-std::vector<index_t> valid_neighbours(MatX<bool> const& image, index_t index);
-
 struct ConnectedComponents {
     MatX<int> matrix;
     std::unordered_map<int, std::vector<index_t>> region_map;

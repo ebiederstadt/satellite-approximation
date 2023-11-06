@@ -259,6 +259,17 @@ public:
         return values(static_cast<Eigen::Index>(i.y()), static_cast<Eigen::Index>(i.x()));
     }
 
+    void setValues(MatX<ScalarT> const &new_values)
+    {
+        if (new_values.rows() != values.rows() || new_values.cols() != values.cols()) {
+            throw utils::GenericError(fmt::format(
+                                          "Attempted to update values, but rows/ cols did not match. Old: ({} x {}), New: ({} x {})",
+                                          values.rows(), values.cols(), new_values.rows(), new_values.cols()),
+                *logger);
+        }
+        values = new_values;
+    }
+
     ScalarT bilinearValueAt(LatLng const& pos) const
     {
         // https://en.wikipedia.org/wiki/Bilinear_interpolation#Algorithm

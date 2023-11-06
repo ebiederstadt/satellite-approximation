@@ -12,6 +12,7 @@ __all__ = [
     "UseApproximatedData",
     "UseRealData",
     "single_image_summary",
+    "frost_filter",
     "Date",
     "DataBase",
     "TimeSeries",

@@ -54,7 +54,7 @@ std::vector<TemporalValue> Temporal::band_for_location(fs::path const& base_fold
         }
 
         // 10,000 converts to bottom of atmosphere reflectance
-        constexpr f32 norm_factor = 10000.0f;
+        constexpr f32 norm_factor = 10'000.0f;
         if (!cache[current_date].contains(band)) {
             cache[current_date][band] = utils::GeoTIFF<f32>(base_folder / current_date_string / band_name(band));
             cache[current_date][band].values = ImageOperations::normalize(cache[current_date][band].values, norm_factor);

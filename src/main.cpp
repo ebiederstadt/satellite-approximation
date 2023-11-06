@@ -6,6 +6,7 @@
 #include <pybind11/stl.h>
 #include <spdlog/spdlog.h>
 
+#include "analysis/filters.h"
 #include <analysis/sis.h>
 #include <analysis/utils.h>
 #include <approx/laplace.h>
@@ -92,6 +93,8 @@ PYBIND11_MODULE(_core, m)
         });
     m.def("single_image_summary", &analysis::single_image_summary,
         "base_path"_a, "use_cache"_a, "start_year"_a, "end_year"_a, "index"_a, "threshold"_a, "data_choices"_a);
+
+    m.def("frost_filter", &analysis::frost_filter, "input_image"_a, "kernel_size"_a, "damping_factor"_a);
 
     py::class_<utils::Date>(m, "Date")
         .def(py::init<std::string const&>())
