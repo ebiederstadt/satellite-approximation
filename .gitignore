@@ -15,3 +15,4 @@ conan/*
 bindings/*
 cmakeUserPresets.json
 *.log
+**/__pycache__/*

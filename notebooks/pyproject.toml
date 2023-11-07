@@ -15,6 +15,11 @@ matplotlib = "^3.8.0"
 bokeh = "^3.3.0"
 palettable = "^3.3.3"
 folium = "^0.14.0"
+pandas = {extras = ["excel"], version = "^2.1.2"}
+geopandas = {extras = ["folium", "mapclassify", "matplotlib"], version = "^0.14.0"}
+mapclassify = "^2.6.1"
+sentinelhub = "^3.9.2"
+numba = "^0.58.1"
 
 
 [build-system]
