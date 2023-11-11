@@ -20,6 +20,10 @@ geopandas = {extras = ["folium", "mapclassify", "matplotlib"], version = "^0.14.
 mapclassify = "^2.6.1"
 sentinelhub = "^3.9.2"
 numba = "^0.58.1"
+xarray = "^2023.10.1"
+rioxarray = "^0.15.0"
+scikit-image = "^0.22.0"
+ipympl = "^0.9.3"
 
 
 [build-system]
