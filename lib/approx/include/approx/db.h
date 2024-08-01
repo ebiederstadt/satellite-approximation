@@ -3,8 +3,10 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <utils/date.h>
 #include <utils/db.h>
+#include <utils/types.h>
 
 namespace date_time = boost::gregorian;
+using namespace utils;
 
 namespace approx {
 struct DayInfo {

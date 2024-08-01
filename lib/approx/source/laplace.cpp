@@ -13,6 +13,7 @@
 #include <range/v3/all.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
+#include <opencv2/core/eigen.hpp>
 
 using namespace ranges;
 
@@ -42,8 +43,8 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
         return;
     }
 
-    auto [min_row, max_row] = minmax(invalid_pixels | view::transform([](index_t i) { return i.row; }));
-    auto [min_col, max_col] = minmax(invalid_pixels | view::transform([](index_t i) { return i.col; }));
+    auto [min_row, max_row] = minmax(invalid_pixels | views::transform([](index_t i) { return i.row; }));
+    auto [min_col, max_col] = minmax(invalid_pixels | views::transform([](index_t i) { return i.col; }));
 
     auto height = (max_row - min_row) + 1;
     auto width = (max_col - min_col) + 1;
@@ -92,8 +93,8 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
         set_coefficient(row, col, 0, 0, -4.0);
     };
 
-    for (auto [row, col] : view::cartesian_product(
-             view::ints(min_row, max_row + 1), view::ints(min_col, max_col + 1))) {
+    for (auto [row, col] : views::cartesian_product(
+             views::ints(min_row, max_row + 1), views::ints(min_col, max_col + 1))) {
         // If we are on the border, we assume that the pixel is "known" (even though they may or may not actually be known)
         if (on_border(row, col, input)) {
             dirichlet_boundary_constraint_row(row, col);
@@ -130,6 +131,38 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
     logger->debug("It took {} seconds to solve the problem", sw);
 }
 
+cv::Mat apply_laplace(cv::Mat const &image, cv::Mat const &invalid_image, f64 red_threshold)
+{
+    std::vector<cv::Mat> channels_cv;
+    cv::split(invalid_image, channels_cv);
+    logger->debug("Laplace: found {} channels", channels_cv.size());
+
+    MatX<f64> red_matrix;
+    cv::cv2eigen(channels_cv[2], red_matrix);
+    MatX<bool> invalid_pixels = (red_matrix.array() >= red_threshold);
+    logger->debug("Found {} pixels to replace", utils::count_non_zero(invalid_pixels));
+
+    channels_cv.clear();
+    cv::split(image, channels_cv);
+
+    std::vector<cv::Mat> output;
+    for (auto const & channel : channels_cv) {
+        MatX<f64> mat_eigen;
+        cv::cv2eigen(channel, mat_eigen);
+
+        fill_missing_portion_smooth_boundary(mat_eigen, invalid_pixels);
+
+        cv::Mat output_mat;
+        cv::eigen2cv(mat_eigen, output_mat);
+        output.push_back(output_mat);
+    }
+
+    cv::Mat final_matrix;
+    cv::merge(output, final_matrix);
+
+    return final_matrix;
+}
+
 void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
 {
     logger->debug("Processing directory: {}", base_folder);
@@ -148,7 +181,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
     }
 
     std::mutex mutex;
-    std::for_each(std::execution::par_unseq, folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
+    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
         logger->debug("Starting folder: {}", folder);
         fs::path output_dir = folder / fs::path("approximated_data");
         if (!fs::exists(output_dir)) {
@@ -199,7 +232,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
 
             std::lock_guard<std::mutex> lock(mutex);
             int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace);
-            values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
+//            values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
         }
 
         logger->info("Finished folder: {}", folder);

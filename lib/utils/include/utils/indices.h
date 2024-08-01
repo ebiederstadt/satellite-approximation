@@ -1,11 +1,9 @@
 #pragma once
 
 #include "geotiff.h"
-#include <givde/types.hpp>
 #include <filesystem>
 
 namespace fs = std::filesystem;
-using namespace givde;
 
 namespace utils {
 template<typename T, typename U>

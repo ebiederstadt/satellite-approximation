@@ -34,11 +34,11 @@ MultiChannelImage read_image(fs::path path)
     return output;
 }
 
-void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path)
+std::optional<cv::Mat> image_list_to_cv(std::vector<MatX<f64>> const& channels)
 {
     if (channels.size() != 3) {
         logger->warn("Image with less than 3 channels is not supported. ({} channels provided)", channels.size());
-        return;
+        return {};
     }
 
     cv::Mat red_channel(channels[0].rows(), channels[0].cols(), CV_8UC1);
@@ -55,6 +55,15 @@ void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path)
 
     cv::Mat final_image;
     cv::merge(std::vector<cv::Mat> { blue_channel, green_channel, red_channel }, final_image);
-    cv::imwrite(output_path.c_str(), final_image);
+    return final_image;
+}
+
+void write_image(const std::vector<MatX<f64>>& channels, fs::path const& output_path)
+{
+    auto final_image_or_none = image_list_to_cv(channels);
+    if (!final_image_or_none.has_value()) {
+        return;
+    }
+    cv::imwrite(output_path.c_str(), final_image_or_none.value());
 }
 }

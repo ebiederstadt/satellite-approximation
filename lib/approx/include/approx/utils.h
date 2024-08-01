@@ -2,11 +2,14 @@
 
 #include <Eigen/Sparse>
 #include <filesystem>
-#include <givde/types.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/mat.hpp>
 #include <range/v3/all.hpp>
 
-using namespace givde;
+#include "utils/types.h"
+
 namespace fs = std::filesystem;
+using namespace utils;
 
 namespace approx {
 using triplet_t = Eigen::Triplet<f64>;
@@ -42,7 +45,7 @@ std::vector<index_t> valid_neighbours(MatX<T> const& image, index_t index)
     // clang-format on
     return retVal
         | ranges::views::transform([&index](index_t i) { return index_t { i.row + index.row, i.col + index.col }; })
-        | ranges::view::remove_if([&image](index_t i) { return !within_bounds(image, i); })
+        | ranges::views::remove_if([&image](index_t i) { return !within_bounds(image, i); })
         | ranges::to<std::vector>();
 }
 
@@ -103,5 +106,6 @@ struct MultiChannelImage {
 };
 
 MultiChannelImage read_image(fs::path path);
-void write_image(std::vector<MatX<f64>> channels, fs::path const& output_path);
+std::optional<cv::Mat> image_list_to_cv(std::vector<MatX<f64>> const& channels);
+void write_image(const std::vector<MatX<f64>>& channels, fs::path const& output_path);
 }

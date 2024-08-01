@@ -14,12 +14,13 @@ namespace date_time = boost::gregorian;
 namespace approx {
 auto logger = utils::create_logger("approx::poisson");
 
-void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage const& replacement_images, int start_row, int start_column, f64 sentinel_value)
+void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage const& replacement_images, int start_row, int start_column)
 {
     spdlog::stopwatch sw;
     // Sanity checks
     if (replacement_images.size() > input_images.size()) {
-        logger->error("Cannot solve problem: replacement image is larger than the input image ({} vs {})", replacement_images.size(), input_images.size());
+        logger->error("Cannot solve problem: replacement image is larger than the input image ({}x{} vs {}x{})",
+            replacement_images.rows(), replacement_images.cols(), input_images.rows(), input_images.cols());
         return;
     }
     if (start_row < 0 || start_column < 0 || start_row >= input_images.rows() || start_column >= input_images.cols()) {
@@ -226,23 +227,43 @@ void blend_images_poisson(
             }
         }
 
-        solutions.push_back(chol.solve(b));
+        solutions.emplace_back(chol.solve(b));
     }
 
     // Put the new values into the images
     for (size_t c = 0; c < input_images.images.size(); ++c) {
+        f64 min_val = std::numeric_limits<f64>::max();
+        f64 max_val = std::numeric_limits<f64>::min();
         for (Eigen::Index row = 0; row < replacement_images.rows(); ++row) {
             for (Eigen::Index col = 0; col < replacement_images.cols(); ++col) {
                 // No need to do any modifications if the pixel is not part of the mask
                 if (!invalid_mask(row, col))
                     continue;
 
-                input_images.images[c](row, col) = solutions[c](variable_numbers.at(flatten_index(row, col)));
+                f64 val = solutions[c](variable_numbers.at(flatten_index(row, col)));
+                if (val > max_val)
+                    max_val = val;
+                if (val < min_val)
+                    min_val = val;
+
+                input_images.images[c](row, col) = val;
             }
         }
+        logger->debug("Channel {}, Min: {}, Max: {}", c, min_val, max_val);
     }
 
     logger->debug("It took {:.2f} seconds to solve the poisson equation", sw);
+}
+
+std::vector<MatX<f64>> blend_images_poisson(
+    std::vector<MatX<f64>> const& input_images,
+    std::vector<MatX<f64>> const& replacement_images,
+    MatX<bool> const& invalid_mask)
+{
+    MultiChannelImage input(input_images);
+    MultiChannelImage replacement(replacement_images);
+    blend_images_poisson(input, replacement, invalid_mask);
+    return input.images;
 }
 
 void highlight_area_replaced(MultiChannelImage& input_images, MultiChannelImage const& replacement_images, int start_row, int start_column, Vec3<f64> const& color)
@@ -387,7 +408,7 @@ void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> ban
         for (size_t i = 0; i < input_images.images.size(); ++i) {
             int id = db.write_approx_results(folder.filename().string(), output_band_names[i], ApproxMethod::Poisson);
             template_tiff.values = input_images.images[i];
-            template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
+//            template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
         }
 
         logger->info("Finished folder: {}", folder);

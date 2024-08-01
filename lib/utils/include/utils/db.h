@@ -3,11 +3,11 @@
 #include "noCopying.h"
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <filesystem>
-#include <givde/types.hpp>
 #include <string>
 
+#include "types.h"
+
 namespace fs = std::filesystem;
-using namespace givde;
 
 namespace utils {
 struct CloudShadowStatus {

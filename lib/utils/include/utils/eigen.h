@@ -1,9 +1,6 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <givde/types.hpp>
-
-using namespace givde;
 
 namespace utils {
 // Calculate the number of pixels that are "valid" in a binary mask

@@ -5,15 +5,16 @@
 #include "utils/noCopying.h"
 
 #include <filesystem>
-#include <gdal/gdal_priv.h>
-#include <givde/types.hpp>
+#include <utils/types.h>
+#include <gdal_priv.h>
 #include <opencv2/opencv.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <type_traits>
 
-using namespace givde;
 namespace fs = std::filesystem;
+
+static auto logger = utils::create_logger("utils::geotiff");
 
 namespace utils {
 class GDALDatasetWrapper {
@@ -310,8 +311,8 @@ public:
 
     Vec2<i64> indexAt(LatLng const& pos) const
     {
-        i64 x = i64((pos.y().number() - west()) / eastWestStep());
-        i64 y = i64((pos.x().number() - north()) / northSouthStep());
+        i64 x = i64((pos.y() - west()) / eastWestStep());
+        i64 y = i64((pos.x() - north()) / northSouthStep());
         x = std::clamp(x, static_cast<i64>(0), static_cast<i64>(width - 1));
         y = std::clamp(y, static_cast<i64>(0), static_cast<i64>(height - 1));
 
@@ -357,7 +358,6 @@ public:
 private:
     OGRSpatialReference dataSetCRS;
     std::string m_path;
-    static inline std::shared_ptr<spdlog::logger> logger { utils::create_logger("utils::geotiff") };
 };
 
 }
