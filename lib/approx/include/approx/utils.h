@@ -14,7 +14,7 @@ using namespace utils;
 namespace approx {
 using triplet_t = Eigen::Triplet<f64>;
 using sparse_t = Eigen::SparseMatrix<f64>;
-using cholesky_t = Eigen::SimplicialCholesky<sparse_t>;
+using cholesky_t = Eigen::SimplicialLDLT<sparse_t>;
 
 struct index_t {
     Eigen::Index row;
@@ -29,7 +29,7 @@ struct index_t {
 template<typename T>
 bool within_bounds(MatX<T> const& image, index_t index)
 {
-    return index.row > 0 && index.row < image.rows() && index.col > 0 && index.col < image.cols();
+    return index.row >= 0 && index.row < image.rows() && index.col >= 0 && index.col < image.cols();
 }
 
 template<typename T>
