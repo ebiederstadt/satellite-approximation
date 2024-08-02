@@ -78,6 +78,86 @@ struct Domain {
     T end;
 };
 
+template<typename ScalarT>
+class GeoTiffWriter {
+public:
+    GeoTiffWriter(std::vector<MatX<ScalarT>> values, const fs::path& template_path)
+        : values(std::move(values))
+    {
+        poSrcDS = static_cast<GDALDataset*>(GDALOpen(template_path.c_str(), GA_ReadOnly));
+
+        width = poSrcDS->GetRasterXSize();
+        height = poSrcDS->GetRasterYSize();
+    }
+
+    ~GeoTiffWriter()
+    {
+        poDstDS->FlushCache();
+
+        GDALClose(poSrcDS);
+        GDALClose(poDstDS);
+    }
+
+    void write(const fs::path& destination, int start_index = 1)
+    {
+        if (!ready_driver()) {
+            return;
+        }
+
+        poDstDS = static_cast<GDALDataset*>(poDriver->CreateCopy(
+            destination.c_str(), poSrcDS, true, nullptr, nullptr, nullptr));
+
+        GDALTypeForOurType<ScalarT> type;
+
+        int band_index = start_index;
+        for (auto const &band_data : values) {
+            GDALRasterBand* band = poDstDS->GetRasterBand(band_index);
+            auto err = band->RasterIO(
+                GF_Write,
+                0, 0,
+                this->width, this->height,
+                (void*)band_data.data(),
+                this->width, this->height,
+                type.type,
+                0, 0, 0);
+
+            if (err != CE_None) {
+                logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
+                throw std::runtime_error("Unable to write raster image");
+            }
+
+            band_index += 1;
+        }
+        logger->debug("Wrote {} bands to {}", values.size(), destination);
+    }
+
+private:
+    bool ready_driver()
+    {
+        if (poDriver != nullptr)
+            return true;
+
+        char const* pszFormat = "GTiff";
+        poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
+        if (poDriver == nullptr) {
+            throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
+        }
+        char** papszMetadata = poDriver->GetMetadata();
+        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
+            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
+            return false;
+        }
+        return true;
+    }
+
+    std::vector<MatX<ScalarT>> values;
+    GDALDriver* poDriver = nullptr;
+    GDALDataset* poSrcDS = nullptr;
+    int width = 0;
+    int height = 0;
+    GDALDataset* poDstDS = nullptr;
+};
+
 //------------------------------------------------------------------------------
 // Useful references:
 // https://gdal.org/tutorials/geotransforms_tut.html#geotransforms-tut
@@ -92,18 +172,34 @@ public:
         "We only support a limited set of GDAL data types at the moment."
         " These include u8, u16, u32, i16, i32, f32, f64");
 
-    GeoTIFF(std::string const& path, int bandIndex = 1)
-        : m_path(path)
+    GeoTIFF(std::string path)
+        : m_path(std::move(path))
+        , m_dataSet(m_path)
     {
-        GDALDatasetWrapper dataset { path };
-        dataSetCRS = OGRSpatialReference { dataset->GetProjectionRef() };
+        dataSetCRS = OGRSpatialReference { m_dataSet->GetProjectionRef() };
         dataSetCRS.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-        GDALRasterBand* band = dataset->GetRasterBand(bandIndex);
 
-        width = dataset->GetRasterXSize();
-        height = dataset->GetRasterYSize();
+        width = m_dataSet->GetRasterXSize();
+        height = m_dataSet->GetRasterYSize();
 
-        values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
+        if (m_dataSet->GetGeoTransform(geoTransform) != CE_None) {
+            throw IOError("Unable to load the geo transformation information", fs::path(path), *logger);
+        }
+    }
+
+    // Default constructor for the GeoTIFF.
+    GeoTIFF()
+        : width(0)
+        , height(0)
+        , geoTransform {}
+    {
+    }
+
+    MatX<ScalarT> read(int band_num)
+    {
+        GDALRasterBand* band = m_dataSet->GetRasterBand(band_num);
+        MatX<ScalarT> values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
+
         GDALTypeForOurType<ScalarT> type;
         auto err = band->RasterIO(
             GF_Read,
@@ -117,71 +213,27 @@ public:
         if (err != CE_None) {
             throw std::runtime_error("Unable to load raster image");
         }
-
-        if (dataset->GetGeoTransform(geoTransform) != CE_None) {
-            throw IOError("Unable to load the geo transformation information", fs::path(path), *logger);
-        }
+        return values;
     }
 
-    // Default constructor for the GeoTIFF.
-    GeoTIFF()
-        : width(0)
-        , height(0)
-        , values(MatX<ScalarT>::Zero(0, 0))
-        , geoTransform {}
+    std::vector<MatX<ScalarT>> read(std::vector<int> const &bands)
     {
+        std::vector<MatX<ScalarT>> output;
+        for (auto band_num : bands) {
+            output.push_back(read(band_num));
+        }
+
+        return output;
     }
 
-    void write(std::string const& pathOfDestination, int bandIndex = 1) const
+    std::vector<MatX<ScalarT>> read()
     {
-        return write(pathOfDestination, m_path, bandIndex);
-    }
-
-    void write(std::string const& pathOfDestination, std::string const& pathOfTemplate, int bandIndex = 1) const
-    {
-        char const* pszFormat = "GTiff";
-        GDALDriver* poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
-        if (poDriver == nullptr) {
-            throw std::runtime_error("Unable to find driver for " + std::string(pszFormat));
-        }
-        char** papszMetadata = poDriver->GetMetadata();
-        if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
-            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
-            return;
+        std::vector<MatX<ScalarT>> output;
+        for (int band_num = 0; band_num < m_dataSet->GetRasterCount(); ++band_num) {
+            output.push_back(read(band_num));
         }
 
-        // Use a unique_ptr to manage lifetime
-        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poSrcDS {
-            static_cast<GDALDataset*>(GDALOpen(pathOfTemplate.c_str(), GA_ReadOnly)),
-            GDALClose
-        };
-
-        std::unique_ptr<GDALDataset, decltype(&GDALClose)> poDstDS {
-            poDriver->CreateCopy(pathOfDestination.c_str(), poSrcDS.get(), TRUE, nullptr, nullptr, nullptr),
-            GDALClose
-        };
-
-        GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
-        logger->debug(
-            "Writing to file. CRS.Name: {}, RasterCount: {}",
-            dataSetCRS.GetName(),
-            poDstDS->GetRasterCount());
-
-        GDALTypeForOurType<ScalarT> type;
-        auto err = band->RasterIO(
-            GF_Write,
-            0, 0,
-            this->width, this->height,
-            const_cast<void*>(static_cast<void const*>(this->values.data())),
-            this->width, this->height,
-            type.type,
-            0, 0, 0);
-
-        if (err != CE_None) {
-            logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
-            throw std::runtime_error("Unable to write raster image");
-        }
-        poDstDS->FlushCache();
+        return output;
     }
 
     void write(cv::Mat const& matrix, fs::path const& pathOfDestination, int bandIndex = 1) const
@@ -254,24 +306,13 @@ public:
     LatLng southEast() const { return LatLng(south(), east()); }
     LatLng southWest() const { return LatLng(south(), west()); }
 
-    ScalarT valueAt(LatLng const& pos) const
+    ScalarT valueAt(LatLng const& pos, MatX<ScalarT> const &values) const
     {
         Vec2<i64> i = indexAt(pos);
         return values(static_cast<Eigen::Index>(i.y()), static_cast<Eigen::Index>(i.x()));
     }
 
-    void setValues(MatX<ScalarT> const &new_values)
-    {
-        if (new_values.rows() != values.rows() || new_values.cols() != values.cols()) {
-            throw utils::GenericError(fmt::format(
-                                          "Attempted to update values, but rows/ cols did not match. Old: ({} x {}), New: ({} x {})",
-                                          values.rows(), values.cols(), new_values.rows(), new_values.cols()),
-                *logger);
-        }
-        values = new_values;
-    }
-
-    ScalarT bilinearValueAt(LatLng const& pos) const
+    ScalarT bilinearValueAt(LatLng const& pos, MatX<ScalarT> const &values) const
     {
         // https://en.wikipedia.org/wiki/Bilinear_interpolation#Algorithm
         f64 x = (pos.y() - west()) / eastWestStep();
@@ -327,7 +368,7 @@ public:
     }
 
     template<typename OScalarT>
-    Domain<OScalarT> valueDomain() const
+    Domain<OScalarT> valueDomain(MatX<ScalarT> const &values) const
     {
         return Domain<OScalarT> {
             static_cast<OScalarT>(values.minCoeff()),
@@ -338,7 +379,7 @@ public:
     // DEMs tend to use -32767.0 as the sentinel for "NO DATA"
     // This calculation will ignore those.
     template<typename OScalarT>
-    Domain<OScalarT> demValueDomain() const
+    Domain<OScalarT> demValueDomain(MatX<ScalarT> const &values)
     {
         auto maxValue = values.maxCoeff();
         MatX<ScalarT> selectionMatrix = (values.array() <= -32767.f).template cast<ScalarT>();
@@ -352,12 +393,12 @@ public:
     int width;
     int height;
 
-    MatX<ScalarT> values;
     f64 geoTransform[6];
 
 private:
-    OGRSpatialReference dataSetCRS;
     std::string m_path;
+    GDALDatasetWrapper m_dataSet;
+    OGRSpatialReference dataSetCRS;
 };
 
 }
