@@ -3,9 +3,10 @@
 
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <execution>
+#include <magic_enum.hpp>
+#include <opencv2/core/eigen.hpp>
 #include <spdlog/stopwatch.h>
 #include <utils/error.h>
-#include <utils/filesystem.h>
 #include <utils/geotiff.h>
 #include <utils/log.h>
 
@@ -198,7 +199,14 @@ void blend_images_poisson(
     logger->debug("Found {} invalid pixels", invalid_pixels);
     sparse_t A(num_unknowns, num_unknowns);
     A.setFromTriplets(triplets.begin(), triplets.end());
-    cholesky_t chol(A);
+    cholesky_t solver(A);
+    {
+        auto info = solver.info();
+        if (info != Eigen::Success) {
+            logger->error("Failed to construct matrix. Encountered error: '{}'", magic_enum::enum_name(info));
+            return;
+        }
+    }
 
     // Solve for each channel of the multi-band image
     std::vector<VecX<f64>> solutions;
@@ -227,29 +235,27 @@ void blend_images_poisson(
             }
         }
 
-        solutions.emplace_back(chol.solve(b));
+        solutions.emplace_back(solver.solve(b));
+        {
+            auto info = solver.info();
+            if (info != Eigen::Success) {
+                logger->error("Failed to solve matrix. Encountered error: '{}'", magic_enum::enum_name(info));
+                return;
+            }
+        }
     }
 
     // Put the new values into the images
     for (size_t c = 0; c < input_images.images.size(); ++c) {
-        f64 min_val = std::numeric_limits<f64>::max();
-        f64 max_val = std::numeric_limits<f64>::min();
         for (Eigen::Index row = 0; row < replacement_images.rows(); ++row) {
             for (Eigen::Index col = 0; col < replacement_images.cols(); ++col) {
                 // No need to do any modifications if the pixel is not part of the mask
                 if (!invalid_mask(row, col))
                     continue;
 
-                f64 val = solutions[c](variable_numbers.at(flatten_index(row, col)));
-                if (val > max_val)
-                    max_val = val;
-                if (val < min_val)
-                    min_val = val;
-
-                input_images.images[c](row, col) = val;
+                input_images.images[c](row, col) = solutions[c](variable_numbers.at(flatten_index(row, col)));
             }
         }
-        logger->debug("Channel {}, Min: {}, Max: {}", c, min_val, max_val);
     }
 
     logger->debug("It took {:.2f} seconds to solve the poisson equation", sw);
@@ -312,106 +318,106 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
     return string;
 }
 
-void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 distance_weight, f64 skip_threshold)
-{
-    logger->debug("Processing directory: {}", base_folder);
-    if (!is_directory(base_folder)) {
-        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
-        return;
-    }
-
-    DataBase db(base_folder);
-
-    std::vector<fs::path> folders_to_process;
-    for (auto const& path : fs::directory_iterator(base_folder)) {
-        if (utils::find_directory_contents(path) == utils::DirectoryContents::MultiSpectral) {
-            folders_to_process.push_back(path);
-        }
-    }
-
-    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
-        logger->debug("Starting folder: {}", folder);
-        fs::path output_dir = folder / fs::path("approximated_data");
-        if (!fs::exists(output_dir)) {
-            logger->info("Creating directory: {}", output_dir);
-            fs::create_directory(output_dir);
-        }
-
-        utils::CloudShadowStatus status = db.get_status(folder.filename().string());
-        if (!(status.clouds_exist && status.shadows_exist)) {
-            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
-            return;
-        }
-        if (status.percent_invalid > skip_threshold) {
-            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
-            return;
-        }
-
-        MatX<bool> mask;
-        MatX<bool> clouds;
-        MatX<bool> shadows;
-        utils::GeoTIFF<u8> cloud_tiff;
-        if (status.clouds_exist) {
-            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
-        }
-        if (status.shadows_exist) {
-            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
-        } else {
-            shadows.setZero(clouds.rows(), clouds.cols());
-        }
-        mask = clouds.array() || shadows.array();
-
-        std::unordered_map<std::string, int> existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Poisson);
-
-        if (use_cache) {
-            std::vector<bool> data_exists;
-            for (auto const& band : band_names) {
-                bool result = existing_data.contains(band);
-                data_exists.push_back(result);
-            }
-            if (std::all_of(data_exists.begin(), data_exists.end(), [](bool v) { return v; })) {
-                logger->debug("Skipping folder because all data already exists");
-                return;
-            }
-        }
-
-        approx::MultiChannelImage input_images {};
-        approx::MultiChannelImage replacement_images {};
-        std::vector<std::string> output_band_names;
-
-        for (auto const& band : band_names) {
-            if (use_cache && existing_data.contains(band)) {
-                continue;
-            }
-            fs::path tiff_path = base_folder / fmt::format("{}.tif", band);
-            utils::GeoTIFF<f64> tiff(tiff_path);
-            input_images.images.push_back(tiff.values);
-            output_band_names.push_back(band);
-        }
-
-        // TODO: Take care of the case where we can't find any better images.
-        // In that case, we should use laplace approximation
-        std::string folder_with_good_image = find_good_close_image(folder.filename().string(), distance_weight, db);
-        fs::path replacement_path = base_folder / folder_with_good_image;
-        for (auto const& band : band_names) {
-            if (use_cache && existing_data.contains(band)) {
-                continue;
-            }
-
-            fs::path tiff_path = replacement_path / fmt::format("{}.tif", band);
-            utils::GeoTIFF<f64> tiff(tiff_path);
-            replacement_images.images.push_back(tiff.values);
-        }
-
-        approx::blend_images_poisson(input_images, replacement_images, mask);
-        utils::GeoTIFF<f64> template_tiff(folder / "viewZenithMean.tif");
-        for (size_t i = 0; i < input_images.images.size(); ++i) {
-            int id = db.write_approx_results(folder.filename().string(), output_band_names[i], ApproxMethod::Poisson);
-            template_tiff.values = input_images.images[i];
-//            template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
-        }
-
-        logger->info("Finished folder: {}", folder);
-    });
-}
+//void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 distance_weight, f64 skip_threshold)
+//{
+//    logger->debug("Processing directory: {}", base_folder);
+//    if (!is_directory(base_folder)) {
+//        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
+//        return;
+//    }
+//
+//    DataBase db(base_folder);
+//
+//    std::vector<fs::path> folders_to_process;
+//    for (auto const& path : fs::directory_iterator(base_folder)) {
+//        if (utils::find_directory_contents(path) == utils::DirectoryContents::MultiSpectral) {
+//            folders_to_process.push_back(path);
+//        }
+//    }
+//
+//    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
+//        logger->debug("Starting folder: {}", folder);
+//        fs::path output_dir = folder / fs::path("approximated_data");
+//        if (!fs::exists(output_dir)) {
+//            logger->info("Creating directory: {}", output_dir);
+//            fs::create_directory(output_dir);
+//        }
+//
+//        utils::CloudShadowStatus status = db.get_status(folder.filename().string());
+//        if (!(status.clouds_exist && status.shadows_exist)) {
+//            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
+//            return;
+//        }
+//        if (status.percent_invalid > skip_threshold) {
+//            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+//            return;
+//        }
+//
+//        MatX<bool> mask;
+//        MatX<bool> clouds;
+//        MatX<bool> shadows;
+//        utils::GeoTIFF<u8> cloud_tiff;
+//        if (status.clouds_exist) {
+//            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
+//        }
+//        if (status.shadows_exist) {
+//            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
+//        } else {
+//            shadows.setZero(clouds.rows(), clouds.cols());
+//        }
+//        mask = clouds.array() || shadows.array();
+//
+//        std::unordered_map<std::string, int> existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Poisson);
+//
+//        if (use_cache) {
+//            std::vector<bool> data_exists;
+//            for (auto const& band : band_names) {
+//                bool result = existing_data.contains(band);
+//                data_exists.push_back(result);
+//            }
+//            if (std::all_of(data_exists.begin(), data_exists.end(), [](bool v) { return v; })) {
+//                logger->debug("Skipping folder because all data already exists");
+//                return;
+//            }
+//        }
+//
+//        approx::MultiChannelImage input_images {};
+//        approx::MultiChannelImage replacement_images {};
+//        std::vector<std::string> output_band_names;
+//
+//        for (auto const& band : band_names) {
+//            if (use_cache && existing_data.contains(band)) {
+//                continue;
+//            }
+//            fs::path tiff_path = base_folder / fmt::format("{}.tif", band);
+//            utils::GeoTIFF<f64> tiff(tiff_path);
+//            input_images.images.push_back(tiff.values);
+//            output_band_names.push_back(band);
+//        }
+//
+//        // TODO: Take care of the case where we can't find any better images.
+//        // In that case, we should use laplace approximation
+//        std::string folder_with_good_image = find_good_close_image(folder.filename().string(), distance_weight, db);
+//        fs::path replacement_path = base_folder / folder_with_good_image;
+//        for (auto const& band : band_names) {
+//            if (use_cache && existing_data.contains(band)) {
+//                continue;
+//            }
+//
+//            fs::path tiff_path = replacement_path / fmt::format("{}.tif", band);
+//            utils::GeoTIFF<f64> tiff(tiff_path);
+//            replacement_images.images.push_back(tiff.values);
+//        }
+//
+//        approx::blend_images_poisson(input_images, replacement_images, mask);
+//        utils::GeoTIFF<f64> template_tiff(folder / "viewZenithMean.tif");
+//        for (size_t i = 0; i < input_images.images.size(); ++i) {
+//            int id = db.write_approx_results(folder.filename().string(), output_band_names[i], ApproxMethod::Poisson);
+//            template_tiff.values = input_images.images[i];
+////            template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
+//        }
+//
+//        logger->info("Finished folder: {}", folder);
+//    });
+//}
 }
