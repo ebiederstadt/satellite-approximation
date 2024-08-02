@@ -137,9 +137,13 @@ cv::Mat apply_laplace(cv::Mat const &image, cv::Mat const &invalid_image, f64 re
     cv::split(invalid_image, channels_cv);
     logger->debug("Laplace: found {} channels", channels_cv.size());
 
+
     MatX<f64> red_matrix;
+    MatX<f64> green_matrix;
     cv::cv2eigen(channels_cv[2], red_matrix);
-    MatX<bool> invalid_pixels = (red_matrix.array() >= red_threshold);
+    cv::cv2eigen(channels_cv[1], green_matrix);
+
+    MatX<bool> invalid_pixels = ((red_matrix.array() >= red_threshold).array() && (green_matrix.array() <= 150));
     logger->debug("Found {} pixels to replace", utils::count_non_zero(invalid_pixels));
 
     channels_cv.clear();
@@ -163,79 +167,79 @@ cv::Mat apply_laplace(cv::Mat const &image, cv::Mat const &invalid_image, f64 re
     return final_matrix;
 }
 
-void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
-{
-    logger->debug("Processing directory: {}", base_folder);
-    if (!is_directory(base_folder)) {
-        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
-        return;
-    }
-
-    DataBase db(base_folder);
-
-    std::vector<fs::path> folders_to_process;
-    for (auto const& path : fs::directory_iterator(base_folder)) {
-        if (utils::find_directory_contents(path) == utils::DirectoryContents::MultiSpectral) {
-            folders_to_process.push_back(path);
-        }
-    }
-
-    std::mutex mutex;
-    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
-        logger->debug("Starting folder: {}", folder);
-        fs::path output_dir = folder / fs::path("approximated_data");
-        if (!fs::exists(output_dir)) {
-            logger->info("Creating directory: {}", output_dir);
-            fs::create_directory(output_dir);
-        }
-
-        utils::CloudShadowStatus status;
-        {
-            std::lock_guard<std::mutex> lock(mutex);
-            status = db.get_status(folder.filename().string());
-        }
-        if (!(status.clouds_exist && status.shadows_exist)) {
-            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
-            return;
-        }
-        if (status.percent_invalid > skip_threshold) {
-            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
-            return;
-        }
-
-        MatX<bool> clouds;
-        MatX<bool> shadows;
-        utils::GeoTIFF<u8> cloud_tiff;
-        if (status.clouds_exist) {
-            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
-        }
-        if (status.shadows_exist) {
-            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
-        } else {
-            shadows.setZero(clouds.rows(), clouds.cols());
-        }
-        MatX<bool> mask = clouds.array() || shadows.array();
-
-        std::unordered_map<std::string, int> existing_data;
-        {
-            std::lock_guard<std::mutex> lock(mutex);
-            existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Laplace);
-        }
-        for (auto const& band : band_names) {
-            if (use_cache && existing_data.contains(band)) {
-                continue;
-            }
-
-            fs::path input_path = folder / fs::path(fmt::format("{}.tif", band));
-            utils::GeoTIFF<f64> values(input_path);
-            fill_missing_portion_smooth_boundary(values.values, mask);
-
-            std::lock_guard<std::mutex> lock(mutex);
-            int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace);
-//            values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
-        }
-
-        logger->info("Finished folder: {}", folder);
-    });
-}
+//void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold)
+//{
+//    logger->debug("Processing directory: {}", base_folder);
+//    if (!is_directory(base_folder)) {
+//        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
+//        return;
+//    }
+//
+//    DataBase db(base_folder);
+//
+//    std::vector<fs::path> folders_to_process;
+//    for (auto const& path : fs::directory_iterator(base_folder)) {
+//        if (utils::find_directory_contents(path) == utils::DirectoryContents::MultiSpectral) {
+//            folders_to_process.push_back(path);
+//        }
+//    }
+//
+//    std::mutex mutex;
+//    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
+//        logger->debug("Starting folder: {}", folder);
+//        fs::path output_dir = folder / fs::path("approximated_data");
+//        if (!fs::exists(output_dir)) {
+//            logger->info("Creating directory: {}", output_dir);
+//            fs::create_directory(output_dir);
+//        }
+//
+//        utils::CloudShadowStatus status;
+//        {
+//            std::lock_guard<std::mutex> lock(mutex);
+//            status = db.get_status(folder.filename().string());
+//        }
+//        if (!(status.clouds_exist && status.shadows_exist)) {
+//            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
+//            return;
+//        }
+//        if (status.percent_invalid > skip_threshold) {
+//            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+//            return;
+//        }
+//
+//        MatX<bool> clouds;
+//        MatX<bool> shadows;
+//        utils::GeoTIFF<u8> cloud_tiff;
+//        if (status.clouds_exist) {
+//            clouds = utils::GeoTIFF<u8>(folder / "cloud_mask.tif").values.cast<bool>();
+//        }
+//        if (status.shadows_exist) {
+//            shadows = utils::GeoTIFF<u8>(folder / "shadow_mask.tif").values.cast<bool>();
+//        } else {
+//            shadows.setZero(clouds.rows(), clouds.cols());
+//        }
+//        MatX<bool> mask = clouds.array() || shadows.array();
+//
+//        std::unordered_map<std::string, int> existing_data;
+//        {
+//            std::lock_guard<std::mutex> lock(mutex);
+//            existing_data = db.get_approx_status(folder.filename().string(), ApproxMethod::Laplace);
+//        }
+//        for (auto const& band : band_names) {
+//            if (use_cache && existing_data.contains(band)) {
+//                continue;
+//            }
+//
+//            fs::path input_path = folder / fs::path(fmt::format("{}.tif", band));
+//            utils::GeoTIFF<f64> values(input_path);
+//            fill_missing_portion_smooth_boundary(values.values, mask);
+//
+//            std::lock_guard<std::mutex> lock(mutex);
+//            int id = db.write_approx_results(folder.filename().string(), band, ApproxMethod::Laplace);
+////            values.write(output_dir / fs::path(fmt::format("{}_{}.tif", band, id)));
+//        }
+//
+//        logger->info("Finished folder: {}", folder);
+//    });
+//}
 }

@@ -14,7 +14,7 @@
                 "conan"
             ],
             "cacheVariables": {
-                "BUILD_MCSS_DOCS": "ON"
+                "BUILD_MCSS_DOCS": "OFF"
             }
         },
         {
@@ -74,9 +74,21 @@
             ]
         },
         {
+            "name": "dev-darwin",
+            "binaryDir": "${sourceDir}/build/dev-darwin",
+            "inherits": [
+                "dev-common",
+                "ci-darwin"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
             "name": "dev",
             "binaryDir": "${sourceDir}/build/dev",
-            "inherits": "dev-linux"
+            "inherits": "dev-darwin"
         },
         {
             "name": "prof",

@@ -3,6 +3,7 @@ from ._core import *
 
 __all__ = [
     "__doc__",
+    "set_log_level",
     "CloudParams",
     "SkipShadowDetection",
     "get_diagonal_distance",
@@ -17,5 +18,5 @@ __all__ = [
     "DataBase",
     "TimeSeries",
     "Band",
-    "Temporal"
+    "Temporal",
 ]

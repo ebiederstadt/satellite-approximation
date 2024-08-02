@@ -30,5 +30,5 @@ void fill_missing_portion_smooth_boundary(MatX<f64>& input_image, MatX<bool> con
 // Apply the laplace equation to an image.
 cv::Mat apply_laplace(cv::Mat const &image, cv::Mat const &invalid_region, f64 red_threshold);
 
-void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold, bool use_denoised_data);
+//void fill_missing_data_folder(fs::path folder, std::vector<std::string> band_names, bool use_cache, f64 skip_threshold, bool use_denoised_data);
 }
