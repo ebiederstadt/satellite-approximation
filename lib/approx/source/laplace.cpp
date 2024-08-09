@@ -110,7 +110,7 @@ void solve_matrix(MatX<f64>& input, MatX<bool> const& invalid_mask)
 
     // This will always be a symmetric positive definite system, so we can use cholesky LDLt factorization
     // See: https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
-    cholesky_t chol(A);
+    SparseSolver chol(A);
     VecX<f64> values = chol.solve(b);
 
     // Move the solution values into the image

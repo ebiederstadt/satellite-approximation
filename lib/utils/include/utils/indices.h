@@ -1,7 +1,9 @@
 #pragma once
 
 #include "geotiff.h"
+
 #include <filesystem>
+#include <optional>
 
 namespace fs = std::filesystem;
 

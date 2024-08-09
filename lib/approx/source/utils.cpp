@@ -17,7 +17,7 @@ MultiChannelImage read_image(fs::path path)
 {
     cv::Mat image = cv::imread(path.c_str(), cv::IMREAD_COLOR);
     if (image.empty()) {
-        throw utils::IOError("Failed to open image", path, *logger);
+        throw utils::IOError("Failed to open image", path);
     }
 
     MultiChannelImage output(3, (Eigen::Index)image.rows, (Eigen::Index)image.cols);

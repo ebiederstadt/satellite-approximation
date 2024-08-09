@@ -13,23 +13,21 @@
 namespace date_time = boost::gregorian;
 
 namespace approx {
-auto logger = utils::create_logger("approx::poisson");
-
 void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage const& replacement_images, int start_row, int start_column)
 {
     spdlog::stopwatch sw;
     // Sanity checks
     if (replacement_images.size() > input_images.size()) {
-        logger->error("Cannot solve problem: replacement image is larger than the input image ({}x{} vs {}x{})",
+        spdlog::error("Cannot solve problem: replacement image is larger than the input image ({}x{} vs {}x{})",
             replacement_images.rows(), replacement_images.cols(), input_images.rows(), input_images.cols());
         return;
     }
     if (start_row < 0 || start_column < 0 || start_row >= input_images.rows() || start_column >= input_images.cols()) {
-        logger->error("Cannot solve problem: row/column is out of bounds. Row: {}, Column: {}", start_row, start_column);
+        spdlog::error("Cannot solve problem: row/column is out of bounds. Row: {}, Column: {}", start_row, start_column);
         return;
     }
     if (start_row + replacement_images.rows() > input_images.rows() || start_column + replacement_images.cols() > input_images.cols()) {
-        logger->error("Cannot solve problem: replacement image goes beyond the bounds of the input image"
+        spdlog::error("Cannot solve problem: replacement image goes beyond the bounds of the input image"
                       "({}, {} vs {}, {})",
             start_row + replacement_images.rows(), start_column + replacement_images.cols(), input_images.rows(), input_images.cols());
         return;
@@ -83,15 +81,15 @@ void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage con
         }
     }
 
-    logger->debug("Found {} invalid pixels", invalid_pixels);
+    spdlog::debug("Found {} invalid pixels", invalid_pixels);
     sparse_t A(num_unknowns, num_unknowns);
     A.setFromTriplets(triplets.begin(), triplets.end());
-    cholesky_t chol(A);
+    SparseSolver chol(A);
 
     // Solve for each channel of the multi-band image
     std::vector<VecX<f64>> solutions;
 
-    logger->debug("Solving the system for {} image channels", input_images.images.size());
+    spdlog::debug("Solving the system for {} image channels", input_images.images.size());
     for (size_t c = 0; c < input_images.images.size(); ++c) {
         VecX<f64> b(num_unknowns);
         b.setZero();
@@ -136,7 +134,7 @@ void blend_images_poisson(MultiChannelImage& input_images, MultiChannelImage con
         }
     }
 
-    logger->debug("It took {:.2f} seconds to solve the poisson equation", sw);
+    spdlog::debug("It took {:.2f} seconds to solve the poisson equation", sw);
 }
 
 void blend_images_poisson(
@@ -147,11 +145,11 @@ void blend_images_poisson(
     spdlog::stopwatch sw;
     // Sanity checks
     if (replacement_images.size() != input_images.size()) {
-        logger->error("Cannot solve problem: replacement image is not the same size as input image ({} vs {})", replacement_images.size(), input_images.size());
+        spdlog::error("Cannot solve problem: replacement image is not the same size as input image ({} vs {})", replacement_images.size(), input_images.size());
         return;
     }
     if (input_images.size() != invalid_mask.size()) {
-        logger->error("Cannot solve problem: input images and mask are different sizes ({} vs {})", input_images.size(), invalid_mask.size());
+        spdlog::error("Cannot solve problem: input images and mask are different sizes ({} vs {})", input_images.size(), invalid_mask.size());
     }
 
     auto flatten_index = [&](Eigen::Index row, Eigen::Index col) {
@@ -196,14 +194,16 @@ void blend_images_poisson(
         }
     }
 
-    logger->debug("Found {} invalid pixels", invalid_pixels);
+    spdlog::debug("Found {} invalid pixels", invalid_pixels);
     sparse_t A(num_unknowns, num_unknowns);
     A.setFromTriplets(triplets.begin(), triplets.end());
-    cholesky_t solver(A);
+    SparseSolver solver(A);
+    solver.setMaxIterations(A.cols() / 2);
+    solver.setTolerance(1e-5);
     {
         auto info = solver.info();
         if (info != Eigen::Success) {
-            logger->error("Failed to construct matrix. Encountered error: '{}'", magic_enum::enum_name(info));
+            spdlog::error("Failed to construct matrix. Encountered error: '{}'", magic_enum::enum_name(info));
             return;
         }
     }
@@ -215,10 +215,15 @@ void blend_images_poisson(
         b.setZero();
         irow = 0;
 
+        // The guess will be the replacement image
+        VecX<f64> guess(num_unknowns);
+
         for (Eigen::Index row = 0; row < replacement_images.rows(); ++row) {
             for (Eigen::Index col = 0; col < replacement_images.cols(); ++col) {
                 if (!invalid_mask(row, col))
                     continue;
+
+                guess(irow) = replacement_images.images[c](row, col);
 
                 std::vector<index_t> neighbours = valid_neighbours(replacement_images[0], { row, col });
                 for (auto const& [nrow, ncol] : neighbours) {
@@ -235,11 +240,12 @@ void blend_images_poisson(
             }
         }
 
-        solutions.emplace_back(solver.solve(b));
+        solutions.emplace_back(solver.solveWithGuess(b, guess));
+        spdlog::debug("Solution found after {} iterations with {:.4e} error", solver.iterations(), solver.error());
         {
             auto info = solver.info();
             if (info != Eigen::Success) {
-                logger->error("Failed to solve matrix. Encountered error: '{}'", magic_enum::enum_name(info));
+                spdlog::error("Failed to solve matrix. Encountered error: '{}'", magic_enum::enum_name(info));
                 return;
             }
         }
@@ -258,7 +264,7 @@ void blend_images_poisson(
         }
     }
 
-    logger->debug("It took {:.2f} seconds to solve the poisson equation", sw);
+    spdlog::debug("It took {:.2f} seconds to solve the poisson equation", sw);
 }
 
 std::vector<MatX<f64>> blend_images_poisson(
@@ -293,13 +299,13 @@ void highlight_area_replaced(MultiChannelImage& input_images, MultiChannelImage 
 std::string find_good_close_image(std::string const& date_string, f64 distance_weight, DataBase& db)
 {
     if (distance_weight < 0 || distance_weight > 1) {
-        throw utils::GenericError("Could not find close image: distance weight not between 0 and 1", *logger);
+        throw utils::GenericError("Could not find close image: distance weight not between 0 and 1");
     }
 
     auto date = date_time::from_simple_string(date_string);
     std::vector<DayInfo> info = db.select_close_images(date_string);
     if (info.empty()) {
-        logger->warn("Could not find any good images close by. Date: {}", date_time::to_simple_string(date));
+        spdlog::warn("Could not find any good images close by. Date: {}", date_time::to_simple_string(date));
         return {};
     }
 
@@ -309,20 +315,20 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
 
     DayInfo info_for_current_date = db.select_info_about_date(date_string);
     if (info_for_current_date.percent_invalid < info[0].percent_invalid) {
-        logger->debug("The current date has fewer invalid pixels than the date we found. Use laplace approximation");
+        spdlog::debug("The current date has fewer invalid pixels than the date we found. Use laplace approximation");
         return date_string;
     }
 
     auto string = date_time::to_iso_extended_string(info[0].date);
-    logger->debug("Found image: {} {:.2f}% invalid", string, 100 * info[0].percent_invalid);
+    spdlog::debug("Found image: {} {:.2f}% invalid", string, 100 * info[0].percent_invalid);
     return string;
 }
 
 //void fill_missing_data_folder(fs::path base_folder, std::vector<std::string> band_names, bool use_cache, f64 distance_weight, f64 skip_threshold)
 //{
-//    logger->debug("Processing directory: {}", base_folder);
+//    spdlog::debug("Processing directory: {}", base_folder);
 //    if (!is_directory(base_folder)) {
-//        logger->warn("Could not process: base folder is not a directory ({})", base_folder);
+//        spdlog::warn("Could not process: base folder is not a directory ({})", base_folder);
 //        return;
 //    }
 //
@@ -336,20 +342,20 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
 //    }
 //
 //    std::for_each(folders_to_process.begin(), folders_to_process.end(), [&](auto&& folder) {
-//        logger->debug("Starting folder: {}", folder);
+//        spdlog::debug("Starting folder: {}", folder);
 //        fs::path output_dir = folder / fs::path("approximated_data");
 //        if (!fs::exists(output_dir)) {
-//            logger->info("Creating directory: {}", output_dir);
+//            spdlog::info("Creating directory: {}", output_dir);
 //            fs::create_directory(output_dir);
 //        }
 //
 //        utils::CloudShadowStatus status = db.get_status(folder.filename().string());
 //        if (!(status.clouds_exist && status.shadows_exist)) {
-//            logger->warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
+//            spdlog::warn("Both clouds and shadows don't exist for folder {}. Skipping", folder);
 //            return;
 //        }
 //        if (status.percent_invalid > skip_threshold) {
-//            logger->info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
+//            spdlog::info("Skipping {} because there is too little valid data ({:.1f}% invalid)", folder, status.percent_invalid * 100.0);
 //            return;
 //        }
 //
@@ -376,7 +382,7 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
 //                data_exists.push_back(result);
 //            }
 //            if (std::all_of(data_exists.begin(), data_exists.end(), [](bool v) { return v; })) {
-//                logger->debug("Skipping folder because all data already exists");
+//                spdlog::debug("Skipping folder because all data already exists");
 //                return;
 //            }
 //        }
@@ -417,7 +423,7 @@ std::string find_good_close_image(std::string const& date_string, f64 distance_w
 ////            template_tiff.write(output_dir / fs::path(fmt::format("{}_{}.tif", output_band_names[i], id)));
 //        }
 //
-//        logger->info("Finished folder: {}", folder);
+//        spdlog::info("Finished folder: {}", folder);
 //    });
 //}
 }

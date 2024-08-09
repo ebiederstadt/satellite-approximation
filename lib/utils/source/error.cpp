@@ -8,13 +8,7 @@ IOError::IOError(std::string_view msg, fs::path path)
     : m_message(msg.data())
     , m_path(std::move(path))
 {
-}
-
-IOError::IOError(std::string_view msg, fs::path path, spdlog::logger& logger)
-    : m_message(msg.data())
-    , m_path(std::move(path))
-{
-    logger.error("{} (path: {})", m_message, m_path);
+    spdlog::error("{} (path: {})", m_message, m_path);
 }
 
 DBError::DBError(std::string_view msg, int error_code)

@@ -5,16 +5,14 @@
 #include "utils/noCopying.h"
 
 #include <filesystem>
-#include <utils/types.h>
 #include <gdal_priv.h>
 #include <opencv2/opencv.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <type_traits>
+#include <utils/types.h>
 
 namespace fs = std::filesystem;
-
-static auto logger = utils::create_logger("utils::geotiff");
 
 namespace utils {
 class GDALDatasetWrapper {
@@ -24,7 +22,7 @@ public:
     explicit GDALDatasetWrapper(std::string path);
     virtual ~GDALDatasetWrapper();
 
-    GDALDataset* operator->() { return dataset; }
+    GDALDataset* operator->() const { return dataset; }
 
 private:
     GDALDataset* dataset;
@@ -81,7 +79,7 @@ struct Domain {
 template<typename ScalarT>
 class GeoTiffWriter {
 public:
-    GeoTiffWriter(std::vector<MatX<ScalarT>> values, const fs::path& template_path)
+    GeoTiffWriter(std::shared_ptr<std::vector<MatX<ScalarT>>> values, fs::path const& template_path)
         : values(std::move(values))
     {
         poSrcDS = static_cast<GDALDataset*>(GDALOpen(template_path.c_str(), GA_ReadOnly));
@@ -98,7 +96,7 @@ public:
         GDALClose(poDstDS);
     }
 
-    void write(const fs::path& destination, int start_index = 1)
+    void write(fs::path const& destination, int start_index = 1)
     {
         if (!ready_driver()) {
             return;
@@ -110,7 +108,7 @@ public:
         GDALTypeForOurType<ScalarT> type;
 
         int band_index = start_index;
-        for (auto const &band_data : values) {
+        for (auto const& band_data : *values) {
             GDALRasterBand* band = poDstDS->GetRasterBand(band_index);
             auto err = band->RasterIO(
                 GF_Write,
@@ -122,13 +120,13 @@ public:
                 0, 0, 0);
 
             if (err != CE_None) {
-                logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
+                spdlog::error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
                 throw std::runtime_error("Unable to write raster image");
             }
 
             band_index += 1;
         }
-        logger->debug("Wrote {} bands to {}", values.size(), destination);
+        spdlog::debug("Wrote {} bands to {}", values->size(), destination);
     }
 
 private:
@@ -144,13 +142,13 @@ private:
         }
         char** papszMetadata = poDriver->GetMetadata();
         if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
-            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
+            spdlog::error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
             return false;
         }
         return true;
     }
 
-    std::vector<MatX<ScalarT>> values;
+    std::shared_ptr<std::vector<MatX<ScalarT>>> values;
     GDALDriver* poDriver = nullptr;
     GDALDataset* poSrcDS = nullptr;
     int width = 0;
@@ -183,7 +181,7 @@ public:
         height = m_dataSet->GetRasterYSize();
 
         if (m_dataSet->GetGeoTransform(geoTransform) != CE_None) {
-            throw IOError("Unable to load the geo transformation information", fs::path(path), *logger);
+            throw IOError("Unable to load the geo transformation information", fs::path(path));
         }
     }
 
@@ -195,7 +193,7 @@ public:
     {
     }
 
-    MatX<ScalarT> read(int band_num)
+    MatX<ScalarT> read(int band_num) const
     {
         GDALRasterBand* band = m_dataSet->GetRasterBand(band_num);
         MatX<ScalarT> values = MatX<ScalarT>::Zero(static_cast<Eigen::Index>(height), static_cast<Eigen::Index>(width));
@@ -216,7 +214,7 @@ public:
         return values;
     }
 
-    std::vector<MatX<ScalarT>> read(std::vector<int> const &bands)
+    std::vector<MatX<ScalarT>> read(std::vector<int> const& bands) const
     {
         std::vector<MatX<ScalarT>> output;
         for (auto band_num : bands) {
@@ -226,7 +224,7 @@ public:
         return output;
     }
 
-    std::vector<MatX<ScalarT>> read()
+    std::vector<MatX<ScalarT>> read() const
     {
         std::vector<MatX<ScalarT>> output;
         for (int band_num = 0; band_num < m_dataSet->GetRasterCount(); ++band_num) {
@@ -245,7 +243,7 @@ public:
         }
         char** papszMetadata = poDriver->GetMetadata();
         if (CSLFetchBoolean(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) == 0) {
-            logger->error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
+            spdlog::error("Driver {} does not support CreateCopy() method and cannot be used", pszFormat);
             return;
         }
 
@@ -261,7 +259,7 @@ public:
         };
 
         GDALRasterBand* band = poDstDS->GetRasterBand(bandIndex);
-        logger->debug(
+        spdlog::debug(
             "Writing to file. CRS.Name: {}, RasterCount: {}",
             dataSetCRS.GetName(),
             poDstDS->GetRasterCount());
@@ -277,7 +275,7 @@ public:
             0, 0, 0);
 
         if (err != CE_None) {
-            logger->error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
+            spdlog::error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
             throw std::runtime_error("Unable to write raster image");
         }
         poDstDS->FlushCache();
@@ -306,13 +304,13 @@ public:
     LatLng southEast() const { return LatLng(south(), east()); }
     LatLng southWest() const { return LatLng(south(), west()); }
 
-    ScalarT valueAt(LatLng const& pos, MatX<ScalarT> const &values) const
+    ScalarT valueAt(LatLng const& pos, MatX<ScalarT> const& values) const
     {
         Vec2<i64> i = indexAt(pos);
         return values(static_cast<Eigen::Index>(i.y()), static_cast<Eigen::Index>(i.x()));
     }
 
-    ScalarT bilinearValueAt(LatLng const& pos, MatX<ScalarT> const &values) const
+    ScalarT bilinearValueAt(LatLng const& pos, MatX<ScalarT> const& values) const
     {
         // https://en.wikipedia.org/wiki/Bilinear_interpolation#Algorithm
         f64 x = (pos.y() - west()) / eastWestStep();
@@ -368,7 +366,7 @@ public:
     }
 
     template<typename OScalarT>
-    Domain<OScalarT> valueDomain(MatX<ScalarT> const &values) const
+    Domain<OScalarT> valueDomain(MatX<ScalarT> const& values) const
     {
         return Domain<OScalarT> {
             static_cast<OScalarT>(values.minCoeff()),
@@ -379,7 +377,7 @@ public:
     // DEMs tend to use -32767.0 as the sentinel for "NO DATA"
     // This calculation will ignore those.
     template<typename OScalarT>
-    Domain<OScalarT> demValueDomain(MatX<ScalarT> const &values)
+    Domain<OScalarT> demValueDomain(MatX<ScalarT> const& values)
     {
         auto maxValue = values.maxCoeff();
         MatX<ScalarT> selectionMatrix = (values.array() <= -32767.f).template cast<ScalarT>();

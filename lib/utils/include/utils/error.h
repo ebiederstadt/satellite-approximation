@@ -11,7 +11,6 @@ namespace utils {
 class IOError : public std::exception {
 public:
     IOError(std::string_view msg, fs::path path);
-    IOError(std::string_view msg, fs::path path, spdlog::logger& logger);
 
     char const* what() const noexcept override { return m_message.c_str(); }
     fs::path path() const { return m_path; }

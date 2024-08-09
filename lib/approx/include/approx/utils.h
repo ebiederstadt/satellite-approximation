@@ -3,7 +3,7 @@
 #include <Eigen/Sparse>
 #include <filesystem>
 #include <opencv2/core/mat.hpp>
-#include <opencv2/core/mat.hpp>
+#include <optional>
 #include <range/v3/all.hpp>
 
 #include "utils/types.h"
@@ -14,7 +14,7 @@ using namespace utils;
 namespace approx {
 using triplet_t = Eigen::Triplet<f64>;
 using sparse_t = Eigen::SparseMatrix<f64>;
-using cholesky_t = Eigen::SimplicialLDLT<sparse_t>;
+using SparseSolver = Eigen::ConjugateGradient<sparse_t, Eigen::Lower | Eigen::Upper>;
 
 struct index_t {
     Eigen::Index row;
@@ -107,5 +107,5 @@ struct MultiChannelImage {
 
 MultiChannelImage read_image(fs::path path);
 std::optional<cv::Mat> image_list_to_cv(std::vector<MatX<f64>> const& channels);
-void write_image(const std::vector<MatX<f64>>& channels, fs::path const& output_path);
+void write_image(std::vector<MatX<f64>> const& channels, fs::path const& output_path);
 }
