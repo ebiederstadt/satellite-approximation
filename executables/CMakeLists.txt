@@ -2,6 +2,7 @@
 #
 set(libraries
         utils
+        OpenMP::OpenMP_CXX
         opencv::opencv
         range-v3::range-v3
         GDAL::GDAL)

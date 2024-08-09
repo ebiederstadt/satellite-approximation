@@ -17,7 +17,7 @@ find_package(range-v3 REQUIRED)
 find_package(GDAL CONFIG REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(OpenCV REQUIRED)
-#find_package(cnpy REQUIRED)
+find_package(OpenMP REQUIRED)
 
 include_directories(thirdparty/eigen-master)
 
