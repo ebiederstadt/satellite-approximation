@@ -20,6 +20,7 @@ find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
 
 include_directories(thirdparty/eigen-master)
+add_subdirectory(thirdparty/libmorton-0.2.12)
 
 add_subdirectory(lib/approx)
 add_subdirectory(lib/utils)
