@@ -3,20 +3,12 @@ from ._core import *
 
 __all__ = [
     "__doc__",
+    "LogLevel",
     "set_log_level",
     "CloudParams",
     "SkipShadowDetection",
     "get_diagonal_distance",
     "detect",
     "filling_missing_portions_smooth_boundaries",
-    "Indices",
-    "UseApproximatedData",
-    "UseRealData",
-    "single_image_summary",
-    "frost_filter",
-    "Date",
-    "DataBase",
-    "TimeSeries",
-    "Band",
-    "Temporal",
+    "blend_images_poisson"
 ]
