@@ -1,7 +1,7 @@
 #include "utils/error.h"
-#include "utils/log.h"
 
 #include <sqlite3.h>
+#include <fmt/std.h>
 
 namespace utils {
 IOError::IOError(std::string_view msg, fs::path path)

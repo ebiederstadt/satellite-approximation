@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <utils/types.h>
 
 namespace utils {
 // Calculate the number of pixels that are "valid" in a binary mask
