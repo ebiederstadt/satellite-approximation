@@ -15,19 +15,13 @@ add_library(cloud_shadow_detection STATIC
         source/ProbabilityRefinement.cpp
         source/SceneClassificationLayer.cpp
         source/ShadowMaskEvaluation.cpp
-        source/temporal.cpp
         source/types.cpp
         source/VectorGridOperations.cpp)
 
 target_link_libraries(
         cloud_shadow_detection PRIVATE
         utils
-        givdetypes::givdetypes
-        bfg::lyra
-        tomlplusplus::tomlplusplus
-        Eigen3::Eigen
         spdlog::spdlog
-        nlohmann_json::nlohmann_json
         glm::glm
         glfw
         TIFF::TIFF

@@ -2,11 +2,11 @@
 
 #include <array>
 #include <filesystem>
-#include <givde/types.hpp>
+#include <utils/types.h>
 
 #include "db.h"
 
-using namespace givde;
+using namespace utils;
 namespace fs = std::filesystem;
 
 namespace remote_sensing {
@@ -21,10 +21,13 @@ struct CloudParams {
     fs::path sun_zenith_path;
     fs::path sun_azimuth_path;
 
-    fs::path cloud_path() const;
-    fs::path shadow_potential_path() const;
-    fs::path object_based_shadow_path() const;
-    fs::path shadow_path() const;
+    CloudParams() = default;
+    explicit CloudParams(fs::path const& root);
+
+    [[nodiscard]] fs::path cloud_path() const;
+    [[nodiscard]] fs::path shadow_potential_path() const;
+    [[nodiscard]] fs::path object_based_shadow_path() const;
+    [[nodiscard]] fs::path shadow_path() const;
 };
 
 struct SkipShadowDetection {

@@ -17,6 +17,7 @@
 #include <cloud_shadow_detection/PitFillAlgorithm.h>
 #include <cloud_shadow_detection/PotentialShadowMask.h>
 #include <cloud_shadow_detection/VectorGridOperations.h>
+#include <fmt/std.h>
 #include <utils/eigen.h>
 #include <utils/filesystem.h>
 
@@ -35,6 +36,19 @@ static constexpr float DistanceToView = 785.f;
 static constexpr float ProbabilityFunctionThreshold = .15f;
 
 static auto logger = utils::create_logger("cloud_shadow_detection::automatic_detection");
+
+CloudParams::CloudParams(fs::path const& root)
+    : nir_path(root / "B08.tif")
+    , clp_path(root / "CLP.tif")
+    , cld_path(root / "CLD.tif")
+    , scl_path(root / "SCL.tif")
+    , rgb_path(root / "RGB.tif")
+    , view_zenith_path(root / "viewZenithMean.tif")
+    , view_azimuth_path(root / "viewAzimuthMean.tif")
+    , sun_zenith_path(root / "sunZenithAngles.tif")
+    , sun_azimuth_path(root / "sunAzimuthAngles.tif")
+{
+}
 
 fs::path CloudParams::cloud_path() const
 {
@@ -85,22 +99,18 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
     auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
 
     status.clouds_computed = true;
-    status.percent_clouds = utils::percent_non_zero(generated_cloud_mask.cloudMask);
+    status.percent_clouds = utils::percent_non_zero<bool>(generated_cloud_mask.cloudMask);
     status.percent_invalid = status.percent_clouds;
 
-    utils::GeoTIFF<u8> template_geotiff(params.nir_path);
-    try {
-        template_geotiff.values = generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse();
-        template_geotiff.write(params.cloud_path());
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(
-            fmt::format("Failed to write cloud mask. Path: {}. Message: {}", params.cloud_path(),
-                e.what()));
+    {
+        auto values = std::make_shared<MatX<u8>>(generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse());
+        utils::GeoTiffWriter<u8> tiff_writer(values, params.nir_path);
+        tiff_writer.write(params.cloud_path());
     }
 
     // Because shadow detection can be a slow process, we provide a way for the user to skip it if too many of the pixels contain shadows
     if (skipShadowDetection.decision) {
-        f64 percent = utils::percent_non_zero(generated_cloud_mask.cloudMask);
+        f64 percent = utils::percent_non_zero<bool>(generated_cloud_mask.cloudMask);
         if (percent >= skipShadowDetection.threshold) {
             logger->debug("Skipping {} because too much of the image is clouds ({:.2f}% clouds)", params.cloud_path().parent_path(), percent * 100);
             return status;
@@ -199,36 +209,27 @@ std::optional<Status> detect(CloudParams const& params, f32 diagonal_distance, S
     logger->debug("...Finished Algorithm.");
 
     status.shadows_computed = true;
-    status.percent_shadows = utils::percent_non_zero(output_FSM);
+    status.percent_shadows = utils::percent_non_zero<bool>(output_FSM);
     ImageBool total_mask = generated_cloud_mask.cloudMask.array() || output_FSM.array();
-    status.percent_invalid = utils::percent_non_zero(total_mask);
+    status.percent_invalid = utils::percent_non_zero<bool>(total_mask);
 
     logger->debug("Saving shadow results");
-    try {
-        template_geotiff.values = output_PSM->cast<u8>().colwise().reverse();
-        template_geotiff.write(params.shadow_potential_path());
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(
-            fmt::format("Failed to write potential shadow mask. Path: {}. Message: {}", params.cloud_path(),
-                e.what()));
+    {
+        auto values = std::make_shared<MatX<u8>>(output_PSM->cast<u8>().colwise().reverse());
+        utils::GeoTiffWriter<u8> writer(values, params.nir_path);
+        writer.write(params.shadow_potential_path());
     }
 
-    try {
-        template_geotiff.values = output_OSM->cast<u8>().colwise().reverse();
-        template_geotiff.write(params.object_based_shadow_path());
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(
-            fmt::format("Failed to write object-based shadow mask. Path: {}. Message: {}", params.cloud_path(),
-                e.what()));
+    {
+        auto values = std::make_shared<MatX<u8>>(output_OSM->cast<u8>().colwise().reverse());
+        utils::GeoTiffWriter<u8> writer(values, params.nir_path);
+        writer.write(params.object_based_shadow_path());
     }
 
-    try {
-        template_geotiff.values = output_FSM.cast<u8>().colwise().reverse();
-        template_geotiff.write(params.shadow_path());
-    } catch (std::runtime_error const& e) {
-        throw std::runtime_error(
-            fmt::format("Failed to write final shadow mask. Path: {}. Message: {}", params.cloud_path(),
-                e.what()));
+    {
+        auto values = std::make_shared<MatX<u8>>(output_FSM.cast<u8>().colwise().reverse());
+        utils::GeoTiffWriter<u8> writer(values, params.nir_path);
+        writer.write(params.shadow_path());
     }
 
     return status;
@@ -245,13 +246,13 @@ void detect_clouds(fs::path folder, DataBase const& db)
     auto generated_cloud_mask = GenerateCloudMaskIgnoreLowProbability(clp_data, cld_data, scl_data);
 
     status.clouds_computed = true;
-    status.percent_clouds = utils::percent_non_zero(generated_cloud_mask.cloudMask);
+    status.percent_clouds = utils::percent_non_zero<bool>(generated_cloud_mask.cloudMask);
     status.percent_invalid = status.percent_clouds;
 
     // Write results
-    utils::GeoTIFF<u8> template_geotiff(folder / "B08.tif");
-    template_geotiff.values = generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse();
-    template_geotiff.write(folder / "cloud_mask.tif");
+    auto values = std::make_shared<MatX<u8>>(generated_cloud_mask.cloudMask.cast<u8>().colwise().reverse());
+    utils::GeoTiffWriter<u8> writer(values, folder / "B08.tif");
+    writer.write(folder / "cloud_mask.tif");
 
     db.write_detection_result(utils::Date(folder.filename().string()), status);
 }

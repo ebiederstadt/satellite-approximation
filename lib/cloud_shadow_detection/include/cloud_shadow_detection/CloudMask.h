@@ -17,6 +17,7 @@ struct PartitionCloudMaskReturn {
     CloudQuads clouds;
     std::shared_ptr<ImageInt> map;
 };
+
 PartitionCloudMaskReturn PartitionCloudMask(
     ImageBool const& CloudMaskData,
     float DiagonalLength,

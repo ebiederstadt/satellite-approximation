@@ -4,11 +4,11 @@
 #include "cloud_shadow_detection/ImageOperations.h"
 #include "cloud_shadow_detection/SceneClassificationLayer.h"
 
-#include <givde/types.hpp>
+#include <utils/types.h>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc.hpp>
 
-using namespace givde;
+using namespace utils;
 using namespace ImageOperations;
 using namespace GaussianBlur;
 using namespace SceneClassificationLayer;
