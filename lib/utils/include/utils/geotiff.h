@@ -5,12 +5,14 @@
 #include "utils/noCopying.h"
 
 #include <filesystem>
+#include <fmt/std.h>
 #include <gdal_priv.h>
 #include <opencv2/opencv.hpp>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <type_traits>
 #include <utils/types.h>
+#include <variant>
 
 namespace fs = std::filesystem;
 
@@ -76,11 +78,36 @@ struct Domain {
     T end;
 };
 
+template<typename T>
+using MultiBandValues = std::shared_ptr<std::vector<MatX<T>>>;
+
+template<typename T>
+using SingleBandValues = std::shared_ptr<MatX<T>>;
+
+template<typename T>
+using TiffValues = std::variant<MultiBandValues<T>, SingleBandValues<T>>;
+
+template<class... Ts>
+struct overload : Ts... {
+    using Ts::operator()...;
+};
+template<class... Ts>
+overload(Ts...) -> overload<Ts...>;
+
 template<typename ScalarT>
 class GeoTiffWriter {
 public:
-    GeoTiffWriter(std::shared_ptr<std::vector<MatX<ScalarT>>> values, fs::path const& template_path)
-        : values(std::move(values))
+    GeoTiffWriter(std::shared_ptr<std::vector<MatX<ScalarT>>> _values, fs::path const& template_path)
+        : values(std::move(_values))
+    {
+        poSrcDS = static_cast<GDALDataset*>(GDALOpen(template_path.c_str(), GA_ReadOnly));
+
+        width = poSrcDS->GetRasterXSize();
+        height = poSrcDS->GetRasterYSize();
+    }
+
+    GeoTiffWriter(std::shared_ptr<MatX<ScalarT>> _values, fs::path const& template_path)
+        : values(std::move(_values))
     {
         poSrcDS = static_cast<GDALDataset*>(GDALOpen(template_path.c_str(), GA_ReadOnly));
 
@@ -107,8 +134,7 @@ public:
 
         GDALTypeForOurType<ScalarT> type;
 
-        int band_index = start_index;
-        for (auto const& band_data : *values) {
+        auto write_band = [&](int band_index, MatX<ScalarT> const& band_data) {
             GDALRasterBand* band = poDstDS->GetRasterBand(band_index);
             auto err = band->RasterIO(
                 GF_Write,
@@ -123,10 +149,22 @@ public:
                 spdlog::error("Could not write to file. Error code: {}", CPLGetLastErrorMsg());
                 throw std::runtime_error("Unable to write raster image");
             }
+        };
 
-            band_index += 1;
-        }
-        spdlog::debug("Wrote {} bands to {}", values->size(), destination);
+        std::visit(overload {
+                       [&](SingleBandValues<ScalarT>& band_data) {
+                           write_band(1, *band_data);
+                           spdlog::debug("Wrote to {}", destination);
+                       },
+                       [&](MultiBandValues<ScalarT>& band_values) {
+                           int band_index = start_index;
+                           for (auto const& band_data : *band_values) {
+                               write_band(band_index, band_data);
+                               band_index += 1;
+                           }
+                           spdlog::debug("Wrote {} bands to {}", band_values->size(), destination);
+                       } },
+            values);
     }
 
 private:
@@ -148,7 +186,7 @@ private:
         return true;
     }
 
-    std::shared_ptr<std::vector<MatX<ScalarT>>> values;
+    TiffValues<ScalarT> values;
     GDALDriver* poDriver = nullptr;
     GDALDataset* poSrcDS = nullptr;
     int width = 0;
