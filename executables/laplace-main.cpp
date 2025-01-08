@@ -1,15 +1,15 @@
-#include <gdal_priv.h>
-#include <spdlog/spdlog.h>
-#include <opencv2/opencv.hpp>
 #include <filesystem>
 #include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <spdlog/spdlog.h>
 
 #include <approx/laplace.h>
+#include <fmt/std.h>
 #include <utils/log.h>
 
 namespace fs = std::filesystem;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     if (argc != 4) {
         spdlog::error("Usage: {} <base_image> <invalid_image> <output_path>", argv[0]);
@@ -22,8 +22,8 @@ int main(int argc, char **argv)
     if (!fs::exists(file)) {
         spdlog::error("{} does not exist", file);
         return -1;
-    } if (!fs::exists(replacement_file))
-    {
+    }
+    if (!fs::exists(replacement_file)) {
         spdlog::error("{} does not exist", replacement_file);
         return -1;
     }
