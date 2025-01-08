@@ -36,6 +36,7 @@ pybind11_add_module(_core MODULE ${source_files} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers
         range-v3::range-v3
         approx
+        cloud_shadow_detection
         utils
         spdlog::spdlog
         GDAL::GDAL)
