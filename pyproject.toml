@@ -3,9 +3,9 @@ requires = ["scikit-build-core>=0.3.3", "pybind11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "sentinel_data_processing"
+name = "satellite_approximation"
 version = "0.0.1"
-description="A minimal example package (with pybind11)"
+description="Tools for finding and approximating missing data in satellite imagery."
 requires-python = ">=3.7"
 
 [tool.scikit-build]
