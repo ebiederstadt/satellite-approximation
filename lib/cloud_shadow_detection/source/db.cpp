@@ -99,20 +99,22 @@ std::unordered_map<utils::Date, Status> get_detection_results(fs::path base_fold
         }
 
         Status status;
-        utils::GeoTIFF<u16> cloud_tiff;
-        utils::GeoTIFF<u16> shadow_tiff;
+        MatX<u16> cloud_values;
+        MatX<u16> shadow_values;
 
         if (fs::exists(folder / fs::path("cloud_mask.tif"))) {
             try {
-                cloud_tiff = utils::GeoTIFF<u16>(folder.path() / "cloud_mask.tif");
+                utils::GeoTIFF<u16> cloud_tiff(folder.path() / "cloud_mask.tif");
+                cloud_values = cloud_tiff.read(1);
                 status.clouds_computed = true;
             } catch (std::runtime_error const& e) {
-                logger->warn("Failed to open cloud file. Failed with error: {}", e.what());
+                logger->error("Failed to open cloud file. Failed with error: {}", e.what());
             }
         }
         if (fs::exists(folder / fs::path("shadow_mask.tif"))) {
             try {
-                shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
+                utils::GeoTIFF<u16> shadow_tiff = utils::GeoTIFF<u16>(folder / fs::path("shadow_mask.tif"));
+                shadow_values = shadow_tiff.read(1);
                 status.shadows_computed = true;
             } catch (std::runtime_error const& e) {
                 logger->warn("Failed to open shadow file. Failed with error: {}", e.what());
@@ -123,13 +125,13 @@ std::unordered_map<utils::Date, Status> get_detection_results(fs::path base_fold
             continue;
         }
 
-        if (shadow_tiff.values.size() == 0) {
-            shadow_tiff.values = MatX<u16>::Zero(cloud_tiff.values.rows(), cloud_tiff.values.cols());
+        if (shadow_values.size() == 0) {
+            shadow_values = MatX<u16>::Zero(cloud_values.rows(), cloud_values.cols());
         }
-        MatX<bool> mask = cloud_tiff.values.cast<bool>().array() || shadow_tiff.values.cast<bool>().array();
-        status.percent_clouds = utils::percent_non_zero(cloud_tiff.values);
+        MatX<bool> mask = cloud_values.cast<bool>().array() || shadow_values.cast<bool>().array();
+        status.percent_clouds = utils::percent_non_zero(cloud_values);
         if (status.shadows_computed) {
-            status.percent_shadows = utils::percent_non_zero(shadow_tiff.values);
+            status.percent_shadows = utils::percent_non_zero(shadow_values);
         }
         status.percent_invalid = utils::percent_non_zero(mask);
 

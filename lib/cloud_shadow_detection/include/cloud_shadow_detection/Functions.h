@@ -1,6 +1,7 @@
 #pragma once
-#include "glm/glm.hpp"
+
 #include "types.h"
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,10 @@ bool equal(float x, float y, float eps);
 
 float linearStep(float x, glm::vec2 p0, glm::vec2 p1);
 float percentile(std::vector<float> collection, float percent);
+
+// Distance between two points on the earth, measured in lat,long coordinates
 float distance(glm::vec2 p0, glm::vec2 p1);
+
 glm::vec3 lineProjection(glm::vec3 v, glm::vec3 d_hat);
 glm::vec3 planeProjection(glm::vec3 v, glm::vec3 d_hat);
 

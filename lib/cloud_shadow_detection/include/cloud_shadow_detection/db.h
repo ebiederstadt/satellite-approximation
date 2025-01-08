@@ -5,7 +5,7 @@
 #include <utils/db.h>
 
 namespace fs = std::filesystem;
-using namespace givde;
+using namespace utils;
 namespace date_time = boost::gregorian;
 
 namespace remote_sensing {
