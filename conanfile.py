@@ -16,7 +16,9 @@ class Recipe(ConanFile):
             "boost/1.82.0",
             "range-v3/0.12.0",
             "magic_enum/0.9.3",
-            # "cnpy/cci.20180601"
+            "glm/cci.20230113",
+            "opencl-headers/2023.04.17",
+            "opencl-icd-loader/2023.04.17"
         ]
         for dependency in dependencies:
             self.requires(dependency)

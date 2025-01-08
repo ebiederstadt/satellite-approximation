@@ -18,16 +18,18 @@ find_package(GDAL CONFIG REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(glm REQUIRED)
+find_package(OpenCLHeaders REQUIRED)
+find_package(OpenCLICDLoader REQUIRED)
 
 include_directories(thirdparty/eigen-master)
-add_subdirectory(thirdparty/libmorton-0.2.12)
 
+add_subdirectory(lib/cloud_shadow_detection)
 add_subdirectory(lib/approx)
 add_subdirectory(lib/utils)
 add_subdirectory(executables)
 
 add_subdirectory(thirdparty/SQLiteCpp-3.3.1)
-
 
 set(source_files src/main.cpp)
 pybind11_add_module(_core MODULE ${source_files} WITH_SOABI)
