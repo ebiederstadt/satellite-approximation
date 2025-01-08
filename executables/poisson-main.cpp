@@ -1,4 +1,5 @@
 #include <approx/poisson.h>
+#include <fmt/std.h>
 #include <gdal_priv.h>
 #include <opencv2/core.hpp>
 #include <opencv2/core/eigen.hpp>
@@ -9,15 +10,14 @@
 MatX<bool> preprocess_cloud_band(utils::GeoTIFF<f64> const& tiff, int cloud_band)
 {
     MatX<f64> cloud_mask_float = tiff.read(cloud_band);
-        int dilation_size = 5;
-        cv::MorphShapes dilation_shape = cv::MorphShapes::MORPH_RECT;
-        auto kernel = cv::getStructuringElement(dilation_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
-        cv::Mat cloud_mask_cv;
-        cv::eigen2cv(cloud_mask_float, cloud_mask_cv);
-        cv::morphologyEx(cloud_mask_cv, cloud_mask_cv, cv::MorphTypes::MORPH_CLOSE, kernel);
-//        cv::dilate(cloud_mask_cv, cloud_mask_cv, kernel);
-        cv::cv2eigen(cloud_mask_cv, cloud_mask_float);
-        return cloud_mask_float.cast<bool>();
+    int dilation_size = 5;
+    cv::MorphShapes dilation_shape = cv::MorphShapes::MORPH_RECT;
+    auto kernel = cv::getStructuringElement(dilation_shape, { 2 * dilation_size + 1, 2 * dilation_size + 1 });
+    cv::Mat cloud_mask_cv;
+    cv::eigen2cv(cloud_mask_float, cloud_mask_cv);
+    cv::morphologyEx(cloud_mask_cv, cloud_mask_cv, cv::MorphTypes::MORPH_CLOSE, kernel);
+    cv::cv2eigen(cloud_mask_cv, cloud_mask_float);
+    return cloud_mask_float.cast<bool>();
 }
 
 int main(int argc, char** argv)
