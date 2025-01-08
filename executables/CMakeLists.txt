@@ -1,5 +1,3 @@
-#add_executable(main_cloud_detection main-cloud-detection.cpp)
-#
 set(libraries
         utils
         OpenMP::OpenMP_CXX
@@ -16,3 +14,13 @@ add_executable(laplace_main laplace-main.cpp)
 target_link_libraries(laplace_main
         ${libraries}
         approx)
+
+add_executable(main_cloud_detection main-cloud-detection.cpp)
+target_link_libraries(main_cloud_detection
+        GDAL::GDAL
+        spdlog::spdlog
+        utils
+        glm::glm
+        OpenCL::Headers
+        OpenCL::OpenCL
+        cloud_shadow_detection)
