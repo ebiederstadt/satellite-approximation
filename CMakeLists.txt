@@ -42,4 +42,4 @@ target_link_libraries(_core PRIVATE pybind11::headers
         GDAL::GDAL)
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-install(TARGETS _core DESTINATION sentinel_data_processing)
+install(TARGETS _core DESTINATION satellite_approximation)
